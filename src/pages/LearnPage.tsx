@@ -5,6 +5,14 @@ import { getGrade } from '../data/words'
 import { loadProgress, loadSettings, saveProgress, saveSettings, markWordLearned } from '../utils/storage'
 import { getExampleSpeechRate, speak, speakDialogue, speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function containsWord(text: string, answer: string): boolean {
+  return new RegExp(`\\b${escapeRegExp(answer)}\\b`, 'i').test(text)
+}
+
 export default function LearnPage() {
   const { gradeId, unitId } = useParams()
   const navigate = useNavigate()
@@ -32,8 +40,9 @@ export default function LearnPage() {
 
   const words = unit.words
   const word = words[currentIndex]
-  const dialogueIndex = unit.dialogues?.length ? currentIndex % unit.dialogues.length : -1
-  const dialogue = dialogueIndex >= 0 ? unit.dialogues?.[dialogueIndex] : undefined
+  const dialogue = unit.dialogues?.find(item =>
+    item.lines.some(line => containsWord(line.en, word.en))
+  )
 
   const goNext = () => {
     markLearned(word.id)
