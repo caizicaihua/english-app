@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getGrade } from '../data/words'
-import { loadProgress, saveProgress, markWordLearned } from '../utils/storage'
-import { speak, speakDialogue } from '../utils/speech'
+import { loadProgress, loadSettings, saveProgress, saveSettings, markWordLearned } from '../utils/storage'
+import { getExampleSpeechRate, speak, speakDialogue, speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
 
 export default function LearnPage() {
   const { gradeId, unitId } = useParams()
@@ -15,12 +15,18 @@ export default function LearnPage() {
   const [flipped, setFlipped] = useState(false)
   const [direction, setDirection] = useState(0)
   const [completed, setCompleted] = useState(false)
+  const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeedPreset>(() => loadSettings().speechSpeed)
 
   const markLearned = useCallback((wordId: string) => {
     const progress = loadProgress()
     const updated = markWordLearned(progress, wordId)
     saveProgress(updated)
   }, [])
+
+  const updateSpeechSpeed = (speed: SpeechSpeedPreset) => {
+    setSpeechSpeed(speed)
+    saveSettings({ ...loadSettings(), speechSpeed: speed })
+  }
 
   if (!grade || !unit) return <div className="text-center py-10">未找到该单元</div>
 
@@ -100,6 +106,26 @@ export default function LearnPage() {
         </div>
       </div>
 
+      <div className="bg-white rounded-2xl shadow-sm p-3 max-w-md mx-auto mb-4">
+        <div className="text-xs font-bold text-gray-500 mb-2">句子朗读速度</div>
+        <div className="grid grid-cols-3 gap-2">
+          {speechSpeedOptions.map(option => (
+            <button
+              key={option.value}
+              onClick={() => updateSpeechSpeed(option.value)}
+              className={`rounded-xl px-2 py-2 text-xs font-semibold transition-all ${
+                speechSpeed === option.value
+                  ? 'text-white shadow-sm'
+                  : 'bg-gray-50 text-gray-500'
+              }`}
+              style={speechSpeed === option.value ? { backgroundColor: grade.color } : {}}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex justify-center mb-6" style={{ perspective: 800 }}>
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
@@ -171,7 +197,7 @@ export default function LearnPage() {
           <div className="flex items-center justify-between gap-3 mb-2">
             <div className="text-sm font-bold text-gray-700">📝 例句</div>
             <button
-              onClick={() => speak(word.example!.en)}
+              onClick={() => speak(word.example!.en, getExampleSpeechRate(speechSpeed))}
               className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-base active:scale-90 transition-transform"
             >
               🔊
@@ -190,7 +216,7 @@ export default function LearnPage() {
               <div className="text-xs text-gray-400 mt-0.5">{dialogue.title}</div>
             </div>
             <button
-              onClick={() => speakDialogue(dialogue.lines)}
+              onClick={() => speakDialogue(dialogue.lines, speechSpeed)}
               className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-base active:scale-90 transition-transform"
             >
               🔊

@@ -9,6 +9,29 @@ interface DialogueSpeakerProfile {
   rate: number
 }
 
+export type SpeechSpeedPreset = 'slow' | 'normal' | 'verySlow'
+
+export const speechSpeedOptions: Array<{
+  value: SpeechSpeedPreset
+  label: string
+}> = [
+  { value: 'slow', label: '🐢 慢' },
+  { value: 'normal', label: '🙂 正常' },
+  { value: 'verySlow', label: '🌙 超慢' },
+]
+
+const exampleSpeechRates: Record<SpeechSpeedPreset, number> = {
+  slow: 0.65,
+  normal: 0.72,
+  verySlow: 0.58,
+}
+
+const dialogueSpeechRates: Record<SpeechSpeedPreset, { female: number; male: number; fallback: number }> = {
+  slow: { female: 0.54, male: 0.52, fallback: 0.53 },
+  normal: { female: 0.6, male: 0.58, fallback: 0.59 },
+  verySlow: { female: 0.48, male: 0.46, fallback: 0.47 },
+}
+
 const FEMALE_VOICE_HINTS = [
   'samantha',
   'victoria',
@@ -66,6 +89,10 @@ function getEnglishVoices() {
   return { femaleVoice, maleVoice }
 }
 
+export function getExampleSpeechRate(speed: SpeechSpeedPreset): number {
+  return exampleSpeechRates[speed]
+}
+
 export function speak(text: string, rate = 0.8) {
   if (!('speechSynthesis' in window)) return
   window.speechSynthesis.cancel()
@@ -78,12 +105,13 @@ export function speak(text: string, rate = 0.8) {
   window.speechSynthesis.speak(utterance)
 }
 
-export function speakDialogue(lines: DialogueSpeechLine[]) {
+export function speakDialogue(lines: DialogueSpeechLine[], speed: SpeechSpeedPreset = 'normal') {
   if (!('speechSynthesis' in window) || lines.length === 0) return
 
   window.speechSynthesis.cancel()
 
   const { femaleVoice, maleVoice } = getEnglishVoices()
+  const dialogueRates = dialogueSpeechRates[speed]
   const uniqueSpeakers = Array.from(new Set(lines.map(line => line.speaker.trim()).filter(Boolean)))
 
   const speakerProfiles = new Map<string, DialogueSpeakerProfile>()
@@ -98,7 +126,7 @@ export function speakDialogue(lines: DialogueSpeechLine[]) {
       pitch: usingSameVoice
         ? (useFemaleVoice ? 1.06 : 0.98)
         : (useFemaleVoice ? 1.08 : 0.94),
-      rate: useFemaleVoice ? 0.67 : 0.65,
+      rate: useFemaleVoice ? dialogueRates.female : dialogueRates.male,
     })
   })
 
@@ -109,7 +137,7 @@ export function speakDialogue(lines: DialogueSpeechLine[]) {
     const profile = speakerProfiles.get(line.speaker.trim()) ?? {
       voice: femaleVoice,
       pitch: 1.02,
-      rate: 0.66,
+      rate: dialogueRates.fallback,
     }
 
     const utterance = new SpeechSynthesisUtterance(line.en)

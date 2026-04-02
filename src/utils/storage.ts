@@ -1,4 +1,7 @@
+import type { SpeechSpeedPreset } from './speech'
+
 const STORAGE_KEY = 'english_app_data'
+const SETTINGS_KEY = 'english_app_settings'
 
 export interface ProgressData {
   completedUnits: Record<string, number> // "grade-unit" -> stars (1-3)
@@ -10,6 +13,10 @@ export interface ProgressData {
   achievements: string[]
 }
 
+export interface AppSettings {
+  speechSpeed: SpeechSpeedPreset
+}
+
 function getDefaultData(): ProgressData {
   return {
     completedUnits: {},
@@ -19,6 +26,12 @@ function getDefaultData(): ProgressData {
     streak: 0,
     lastStudyDate: '',
     achievements: [],
+  }
+}
+
+function getDefaultSettings(): AppSettings {
+  return {
+    speechSpeed: 'slow',
   }
 }
 
@@ -34,6 +47,20 @@ export function loadProgress(): ProgressData {
 
 export function saveProgress(data: ProgressData) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+}
+
+export function loadSettings(): AppSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY)
+    if (!raw) return getDefaultSettings()
+    return { ...getDefaultSettings(), ...JSON.parse(raw) }
+  } catch {
+    return getDefaultSettings()
+  }
+}
+
+export function saveSettings(settings: AppSettings) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
 }
 
 export function updateStreak(data: ProgressData): ProgressData {

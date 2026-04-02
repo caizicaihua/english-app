@@ -1,11 +1,18 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { loadProgress } from '../utils/storage'
+import { loadProgress, loadSettings, saveSettings } from '../utils/storage'
+import { speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
 
 export default function SettingsPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [resetDone, setResetDone] = useState(false)
+  const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeedPreset>(() => loadSettings().speechSpeed)
   const progress = loadProgress()
+
+  const handleSpeedChange = (speed: SpeechSpeedPreset) => {
+    setSpeechSpeed(speed)
+    saveSettings({ ...loadSettings(), speechSpeed: speed })
+  }
 
   const handleReset = () => {
     localStorage.removeItem('english_app_data')
@@ -29,6 +36,28 @@ export default function SettingsPage() {
             <p>已完成单元：{Object.keys(progress.completedUnits).length} 个</p>
             <p>错题本：{progress.wrongWords.length} 个</p>
             <p>已解锁成就：{progress.achievements.length} 个</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="text-sm font-bold text-gray-700 mb-1">默认句子语速</div>
+          <p className="text-xs text-gray-400 mb-3">
+            用于学习页中的例句和情景对话朗读，适合一年级孩子反复跟读。
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {speechSpeedOptions.map(option => (
+              <button
+                key={option.value}
+                onClick={() => handleSpeedChange(option.value)}
+                className={`rounded-xl px-2 py-2.5 text-xs font-semibold transition-all ${
+                  speechSpeed === option.value
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-gray-50 text-gray-500'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
 
