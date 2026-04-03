@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { grades } from '../data/words'
+import { gradeCatalog, getTotalWords } from '../data/words'
 import { loadProgress } from '../utils/storage'
 
 export default function HomePage() {
@@ -17,11 +17,11 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {grades.map((grade, index) => {
-          const totalWords = grade.units.reduce((s, u) => s + u.words.length, 0)
+        {gradeCatalog.map((grade, index) => {
+          const totalWords = getTotalWords(grade)
           const learnedInGrade = grade.units
-            .flatMap(u => u.words)
-            .filter(w => progress.learnedWords.includes(w.id)).length
+            .flatMap(unit => unit.wordIds)
+            .filter(id => progress.learnedWords.includes(id)).length
           const percent = totalWords > 0 ? Math.round((learnedInGrade / totalWords) * 100) : 0
 
           return (

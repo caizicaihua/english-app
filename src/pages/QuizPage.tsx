@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getGrade, type DialogueLine, type Unit, type Word } from '../data/words'
+import { loadGrade, type DialogueLine, type Grade, type Unit, type Word } from '../data/words'
 import { loadProgress, saveProgress, completeUnit, addWrongWord, markWordLearned } from '../utils/storage'
 import { speak } from '../utils/speech'
 import StarRating from '../components/StarRating'
@@ -495,7 +495,24 @@ function ResultScreen({ score, total, stars, gradeColor, onRetry, onBack }: {
 export default function QuizPage() {
   const { gradeId, unitId } = useParams()
   const navigate = useNavigate()
-  const grade = getGrade(Number(gradeId))
+  const [grade, setGrade] = useState<Grade | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [retryKey, setRetryKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+
+    loadGrade(Number(gradeId)).then(data => {
+      if (!active) return
+      setGrade(data ?? null)
+      setLoading(false)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [gradeId, unitId])
+
   const unit = grade?.units.find(u => u.id === Number(unitId))
 
   const allGradeWords = useMemo(
@@ -503,8 +520,12 @@ export default function QuizPage() {
     [grade]
   )
 
-  const [questions, setQuestions] = useState<Question[]>(() =>
-    unit ? generateQuestions(unit, allGradeWords) : []
+  const questions = useMemo(
+    () => {
+      void retryKey
+      return unit ? generateQuestions(unit, allGradeWords) : []
+    },
+    [unit, allGradeWords, retryKey]
   )
   const [currentQ, setCurrentQ] = useState(0)
   const [score, setScore] = useState(0)
@@ -544,14 +565,18 @@ export default function QuizPage() {
 
   const handleRetry = () => {
     if (!unit) return
-    setQuestions(generateQuestions(unit, allGradeWords))
+    setRetryKey(key => key + 1)
     setCurrentQ(0)
     setScore(0)
     setFinished(false)
     setResult(null)
   }
 
+  if (loading) return <div className="text-center py-10 text-gray-400">加载中...</div>
+
   if (!grade || !unit) return <div className="text-center py-10">未找到该单元</div>
+
+  if (questions.length === 0) return <div className="text-center py-10 text-gray-400">正在生成题目...</div>
 
   if (finished && result) {
     return (

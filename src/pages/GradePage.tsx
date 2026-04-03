@@ -1,12 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { getGrade } from '../data/words'
+import { getGradeSummary } from '../data/words'
 import { loadProgress } from '../utils/storage'
 import StarRating from '../components/StarRating'
 
 export default function GradePage() {
   const { gradeId } = useParams()
   const navigate = useNavigate()
-  const grade = getGrade(Number(gradeId))
+  const grade = getGradeSummary(Number(gradeId))
   const progress = loadProgress()
 
   if (!grade) return <div className="text-center py-10">年级未找到</div>
@@ -24,8 +24,8 @@ export default function GradePage() {
         {grade.units.map((unit, index) => {
           const unitKey = `${grade.id}-${unit.id}`
           const stars = progress.completedUnits[unitKey] || 0
-          const learnedCount = unit.words.filter(w =>
-            progress.learnedWords.includes(w.id)
+          const learnedCount = unit.wordIds.filter(id =>
+            progress.learnedWords.includes(id)
           ).length
           const isLocked = index > 0 && !progress.completedUnits[`${grade.id}-${grade.units[index - 1].id}`]
 
@@ -47,7 +47,7 @@ export default function GradePage() {
                   <div>
                     <div className="font-semibold text-gray-800">{unit.nameZh}</div>
                     <div className="text-xs text-gray-400">
-                      {unit.name} · {learnedCount}/{unit.words.length} 词
+                      {unit.name} · {learnedCount}/{unit.wordIds.length} 词
                     </div>
                   </div>
                 </div>

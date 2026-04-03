@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { grades } from '../data/words'
+import { gradeCatalog, getTotalWords } from '../data/words'
 import { loadProgress } from '../utils/storage'
 
 export default function StatsPage() {
@@ -37,11 +37,11 @@ export default function StatsPage() {
 
       <h3 className="font-bold text-gray-700 mb-3">各年级进度</h3>
       <div className="space-y-3">
-        {grades.map(grade => {
-          const totalWords = grade.units.reduce((s, u) => s + u.words.length, 0)
+        {gradeCatalog.map(grade => {
+          const totalWords = getTotalWords(grade)
           const learned = grade.units
-            .flatMap(u => u.words)
-            .filter(w => progress.learnedWords.includes(w.id)).length
+            .flatMap(unit => unit.wordIds)
+            .filter(id => progress.learnedWords.includes(id)).length
           const percent = totalWords > 0 ? Math.round((learned / totalWords) * 100) : 0
           const totalStars = grade.units.reduce(
             (s, u) => s + (progress.completedUnits[`${grade.id}-${u.id}`] || 0), 0

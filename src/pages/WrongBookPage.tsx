@@ -1,15 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getWordById } from '../data/words'
+import { loadWordsByIds, type Word } from '../data/words'
 import { loadProgress, saveProgress, removeWrongWord } from '../utils/storage'
 import { speak } from '../utils/speech'
 
 export default function WrongBookPage() {
   const [progress, setProgress] = useState(loadProgress)
+  const [wrongWords, setWrongWords] = useState<Word[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const wrongWords = progress.wrongWords
-    .map(id => getWordById(id))
-    .filter((w): w is NonNullable<typeof w> => !!w)
+  useEffect(() => {
+    let active = true
+
+    loadWordsByIds(progress.wrongWords).then(words => {
+      if (!active) return
+      setWrongWords(words)
+      setLoading(false)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [progress.wrongWords])
 
   const handleRemove = (wordId: string) => {
     const updated = removeWrongWord(progress, wordId)
@@ -27,7 +39,9 @@ export default function WrongBookPage() {
         </p>
       </div>
 
-      {wrongWords.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-10 text-gray-400">加载中...</div>
+      ) : wrongWords.length === 0 ? (
         <div className="text-center py-10">
           <div className="text-5xl mb-4">🎉</div>
           <p className="text-gray-500">太棒了，没有错题！</p>

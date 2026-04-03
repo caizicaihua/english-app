@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getGrade } from '../data/words'
+import { loadGrade, type Grade } from '../data/words'
 import { loadProgress, loadSettings, saveProgress, saveSettings, markWordLearned } from '../utils/storage'
 import { getExampleSpeechRate, speak, speakDialogue, speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
 
@@ -16,8 +16,8 @@ function containsWord(text: string, answer: string): boolean {
 export default function LearnPage() {
   const { gradeId, unitId } = useParams()
   const navigate = useNavigate()
-  const grade = getGrade(Number(gradeId))
-  const unit = grade?.units.find(u => u.id === Number(unitId))
+  const [grade, setGrade] = useState<Grade | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
@@ -35,6 +35,24 @@ export default function LearnPage() {
     setSpeechSpeed(speed)
     saveSettings({ ...loadSettings(), speechSpeed: speed })
   }
+
+  useEffect(() => {
+    let active = true
+
+    loadGrade(Number(gradeId)).then(data => {
+      if (!active) return
+      setGrade(data ?? null)
+      setLoading(false)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [gradeId, unitId])
+
+  const unit = grade?.units.find(u => u.id === Number(unitId))
+
+  if (loading) return <div className="text-center py-10 text-gray-400">加载中...</div>
 
   if (!grade || !unit) return <div className="text-center py-10">未找到该单元</div>
 
