@@ -509,10 +509,13 @@ export default function QuizPage() {
   const [currentQ, setCurrentQ] = useState(0)
   const [score, setScore] = useState(0)
   const [finished, setFinished] = useState(false)
+  const [result, setResult] = useState<{ score: number; stars: number } | null>(null)
 
   const handleAnswer = useCallback((correct: boolean) => {
+    const nextScore = correct ? score + 10 : score
+
     if (correct) {
-      setScore(s => s + 10)
+      setScore(nextScore)
     } else {
       const q = questions[currentQ]
       if (q.type !== 'match') {
@@ -522,19 +525,17 @@ export default function QuizPage() {
     }
 
     if (currentQ >= questions.length - 1) {
-      // Save results
-      const finalScore = score + (correct ? 10 : 0)
-      const stars = finalScore >= 100 ? 3 : finalScore >= 80 ? 2 : finalScore >= 60 ? 1 : 0
+      const stars = nextScore >= 100 ? 3 : nextScore >= 80 ? 2 : nextScore >= 60 ? 1 : 0
       if (stars > 0 && grade && unit) {
         const progress = loadProgress()
         const updated = completeUnit(progress, grade.id, unit.id, stars)
-        // Mark all words as learned
         let withWords = updated
         for (const w of unit.words) {
           withWords = markWordLearned(withWords, w.id)
         }
         saveProgress(withWords)
       }
+      setResult({ score: nextScore, stars })
       setFinished(true)
       return
     }
@@ -547,19 +548,17 @@ export default function QuizPage() {
     setCurrentQ(0)
     setScore(0)
     setFinished(false)
+    setResult(null)
   }
 
   if (!grade || !unit) return <div className="text-center py-10">未找到该单元</div>
 
-  const finalScore = score
-  const stars = finalScore >= 100 ? 3 : finalScore >= 80 ? 2 : finalScore >= 60 ? 1 : 0
-
-  if (finished) {
+  if (finished && result) {
     return (
       <ResultScreen
-        score={finalScore}
+        score={result.score}
         total={questions.length}
-        stars={stars}
+        stars={result.stars}
         gradeColor={grade.color}
         onRetry={handleRetry}
         onBack={() => navigate(`/grade/${grade.id}`)}

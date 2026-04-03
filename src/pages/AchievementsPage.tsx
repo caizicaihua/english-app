@@ -1,35 +1,46 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { achievements } from '../data/achievements'
+import type { ProgressData } from '../utils/storage'
 import { loadProgress, saveProgress, addAchievement } from '../utils/storage'
 
+function resolveAchievementProgress(progress: ProgressData) {
+  const completedUnits = Object.keys(progress.completedUnits).length
+  const perfectUnits = Object.values(progress.completedUnits).filter(stars => stars >= 3).length
+  const stats = {
+    learnedCount: progress.learnedWords.length,
+    streak: progress.streak,
+    completedUnits,
+    perfectUnits,
+  }
+
+  let updated = progress
+  let newestUnlock: string | null = null
+
+  for (const achievement of achievements) {
+    if (!updated.achievements.includes(achievement.id) && achievement.condition(stats)) {
+      updated = addAchievement(updated, achievement.id)
+      newestUnlock = achievement.id
+    }
+  }
+
+  return {
+    progress: updated,
+    newestUnlock,
+    shouldSave: updated !== progress,
+  }
+}
+
 export default function AchievementsPage() {
-  const [progress, setProgress] = useState(loadProgress)
-  const [newUnlock, setNewUnlock] = useState<string | null>(null)
+  const [initialState] = useState(() => resolveAchievementProgress(loadProgress()))
+  const [newUnlock, setNewUnlock] = useState<string | null>(initialState.newestUnlock)
+  const progress = initialState.progress
 
-  // Check and unlock achievements
   useEffect(() => {
-    const completedUnits = Object.keys(progress.completedUnits).length
-    const perfectUnits = Object.values(progress.completedUnits).filter(s => s >= 3).length
-    const stats = {
-      learnedCount: progress.learnedWords.length,
-      streak: progress.streak,
-      completedUnits,
-      perfectUnits,
+    if (initialState.shouldSave) {
+      saveProgress(initialState.progress)
     }
-
-    let updated = progress
-    for (const a of achievements) {
-      if (!updated.achievements.includes(a.id) && a.condition(stats)) {
-        updated = addAchievement(updated, a.id)
-        setNewUnlock(a.id)
-      }
-    }
-    if (updated !== progress) {
-      saveProgress(updated)
-      setProgress(updated)
-    }
-  }, [progress])
+  }, [initialState])
 
   return (
     <div>
