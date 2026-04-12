@@ -20,7 +20,7 @@ export default function Layout() {
             className="text-xl font-bold text-primary cursor-pointer"
             onClick={() => navigate('/')}
           >
-            🎒 小学英语
+            🎒 小学学习
           </h1>
           <button
             onClick={() => navigate('/settings')}

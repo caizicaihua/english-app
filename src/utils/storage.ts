@@ -1,7 +1,9 @@
 import type { SpeechSpeedPreset } from './speech'
+import type { MathAttempt, MathProgressData, MathQuestion, MathWrongQuestion } from '../data/math'
 
 const STORAGE_KEY = 'english_app_data'
 const SETTINGS_KEY = 'english_app_settings'
+const MATH_STORAGE_KEY = 'english_app_math_data'
 
 export interface ProgressData {
   completedUnits: Record<string, number> // "grade-unit" -> stars (1-3)
@@ -15,6 +17,15 @@ export interface ProgressData {
 
 export interface AppSettings {
   speechSpeed: SpeechSpeedPreset
+}
+
+function getDefaultMathData(): MathProgressData {
+  return {
+    bestScore: 0,
+    lastAttempt: null,
+    latestAttempt: null,
+    wrongQuestions: [],
+  }
 }
 
 function getDefaultData(): ProgressData {
@@ -63,6 +74,20 @@ export function saveSettings(settings: AppSettings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
 }
 
+export function loadMathProgress(): MathProgressData {
+  try {
+    const raw = localStorage.getItem(MATH_STORAGE_KEY)
+    if (!raw) return getDefaultMathData()
+    return { ...getDefaultMathData(), ...JSON.parse(raw) }
+  } catch {
+    return getDefaultMathData()
+  }
+}
+
+export function saveMathProgress(data: MathProgressData) {
+  localStorage.setItem(MATH_STORAGE_KEY, JSON.stringify(data))
+}
+
 export function updateStreak(data: ProgressData): ProgressData {
   const today = new Date().toISOString().slice(0, 10)
   if (data.lastStudyDate === today) return data
@@ -107,4 +132,72 @@ export function completeUnit(data: ProgressData, gradeId: number, unitId: number
 export function addAchievement(data: ProgressData, id: string): ProgressData {
   if (data.achievements.includes(id)) return data
   return { ...data, achievements: [...data.achievements, id] }
+}
+
+function mergeWrongQuestions(
+  current: MathWrongQuestion[],
+  additions: MathWrongQuestion[]
+): MathWrongQuestion[] {
+  const merged = new Map(current.map(item => [item.reviewKey, item]))
+
+  additions.forEach(item => {
+    merged.set(item.reviewKey, item)
+  })
+
+  return [...merged.values()].sort((first, second) => (
+    second.lastWrongAt.localeCompare(first.lastWrongAt)
+  ))
+}
+
+export function saveMathAttempt(
+  data: MathProgressData,
+  attempt: MathAttempt,
+  options?: { updateBestScore?: boolean }
+): MathProgressData {
+  const next = {
+    ...data,
+    latestAttempt: attempt,
+  }
+
+  if (options?.updateBestScore === false) {
+    return next
+  }
+
+  return {
+    ...next,
+    lastAttempt: attempt,
+    bestScore: Math.max(data.bestScore, attempt.score),
+  }
+}
+
+export function addMathWrongQuestions(
+  data: MathProgressData,
+  questions: MathQuestion[],
+  wrongAt = new Date().toISOString()
+): MathProgressData {
+  const additions = questions.map(question => ({
+    reviewKey: question.reviewKey,
+    question,
+    lastWrongAt: wrongAt,
+  }))
+
+  return {
+    ...data,
+    wrongQuestions: mergeWrongQuestions(data.wrongQuestions, additions),
+  }
+}
+
+export function removeMathWrongQuestion(data: MathProgressData, reviewKey: string): MathProgressData {
+  return {
+    ...data,
+    wrongQuestions: data.wrongQuestions.filter(item => item.reviewKey !== reviewKey),
+  }
+}
+
+export function removeMathWrongQuestions(data: MathProgressData, reviewKeys: string[]): MathProgressData {
+  const keySet = new Set(reviewKeys)
+  return {
+    ...data,
+    wrongQuestions: data.wrongQuestions.filter(item => !keySet.has(item.reviewKey)),
+  }
 }

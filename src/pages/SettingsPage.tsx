@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { loadProgress, loadSettings, saveSettings } from '../utils/storage'
+import { loadMathProgress, loadProgress, loadSettings, saveSettings } from '../utils/storage'
 import { speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
 
 export default function SettingsPage() {
@@ -8,6 +8,7 @@ export default function SettingsPage() {
   const [resetDone, setResetDone] = useState(false)
   const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeedPreset>(() => loadSettings().speechSpeed)
   const progress = loadProgress()
+  const mathProgress = loadMathProgress()
 
   const handleSpeedChange = (speed: SpeechSpeedPreset) => {
     setSpeechSpeed(speed)
@@ -16,6 +17,7 @@ export default function SettingsPage() {
 
   const handleReset = () => {
     localStorage.removeItem('english_app_data')
+    localStorage.removeItem('english_app_math_data')
     setShowConfirm(false)
     setResetDone(true)
     setTimeout(() => setResetDone(false), 2000)
@@ -35,6 +37,8 @@ export default function SettingsPage() {
             <p>已学单词：{progress.learnedWords.length} 个</p>
             <p>已完成单元：{Object.keys(progress.completedUnits).length} 个</p>
             <p>错题本：{progress.wrongWords.length} 个</p>
+            <p>数学错题：{mathProgress.wrongQuestions.length} 个</p>
+            <p>数学最高分：{mathProgress.bestScore} 分</p>
             <p>已解锁成就：{progress.achievements.length} 个</p>
           </div>
         </div>

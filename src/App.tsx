@@ -8,6 +8,10 @@ import WrongBookPage from './pages/WrongBookPage'
 import StatsPage from './pages/StatsPage'
 import AchievementsPage from './pages/AchievementsPage'
 import SettingsPage from './pages/SettingsPage'
+import MathHomePage from './pages/MathHomePage'
+import MathPracticePage from './pages/MathPracticePage'
+import MathResultPage from './pages/MathResultPage'
+import MathWrongBookPage from './pages/MathWrongBookPage'
 
 const router = createHashRouter([
   {
@@ -22,6 +26,10 @@ const router = createHashRouter([
       { path: 'stats', element: <StatsPage /> },
       { path: 'achievements', element: <AchievementsPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'math', element: <MathHomePage /> },
+      { path: 'math/practice', element: <MathPracticePage /> },
+      { path: 'math/result', element: <MathResultPage /> },
+      { path: 'math/wrong-book', element: <MathWrongBookPage /> },
     ],
   },
 ])
