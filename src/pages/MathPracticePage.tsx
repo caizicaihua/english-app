@@ -77,9 +77,12 @@ export default function MathPracticePage() {
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const hasSubmittedRef = useRef(false)
+  const questionRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
   const sections = useMemo(() => getQuestionSections(questions), [questions])
   const answeredCount = countAnsweredQuestions(questions, answers)
+  const activeQuestion = questions.find(question => question.id === activeQuestionId) ?? null
+  const isKeypadVisible = !!activeQuestion && activeQuestion.type !== 'compare'
 
   const handleSubmit = useCallback(() => {
     if (hasSubmittedRef.current) return
@@ -157,13 +160,25 @@ export default function MathPracticePage() {
   }
 
   const handleCompareAnswer = (questionId: string, symbol: string) => {
+    setActiveQuestionId(null)
     setAnswers(current => ({ ...current, [questionId]: symbol }))
   }
 
-  const activeQuestion = questions.find(question => question.id === activeQuestionId)
+  useEffect(() => {
+    if (!isKeypadVisible || !activeQuestionId) return
+
+    const node = questionRefs.current[activeQuestionId]
+    if (!node) return
+
+    const timeout = window.setTimeout(() => {
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 120)
+
+    return () => window.clearTimeout(timeout)
+  }, [activeQuestionId, isKeypadVisible])
 
   return (
-    <div className="pb-40">
+    <div className={isKeypadVisible ? 'pb-40' : 'pb-6'}>
       <div className="sticky top-[60px] z-40 mb-4">
         <div className="rounded-2xl bg-white/95 shadow-md px-4 py-3 backdrop-blur-sm">
           <div className="flex items-center justify-between gap-3">
@@ -245,6 +260,9 @@ export default function MathPracticePage() {
                   <button
                     key={question.id}
                     onClick={() => setActiveQuestionId(question.id)}
+                    ref={node => {
+                      questionRefs.current[question.id] = node
+                    }}
                     className={`rounded-xl border p-3 text-left transition-all ${
                       isActive
                         ? 'border-primary bg-indigo-50 shadow-sm'
@@ -281,52 +299,61 @@ export default function MathPracticePage() {
         ))}
       </div>
 
-      <motion.div
-        initial={{ y: 80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="fixed bottom-20 left-0 right-0 z-50"
-      >
-        <div className="max-w-lg mx-auto px-4">
-          <div className="rounded-2xl bg-white shadow-xl p-4">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div>
-                <div className="text-sm font-bold text-gray-800">数字输入区</div>
-                <div className="text-xs text-gray-400 mt-0.5">
-                  {activeQuestion
-                    ? `当前：第 ${questions.findIndex(item => item.id === activeQuestion.id) + 1} 题`
-                    : '请先点一题输入答案'}
+      {isKeypadVisible && (
+        <motion.div
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          className="fixed bottom-20 left-0 right-0 z-50"
+        >
+          <div className="max-w-lg mx-auto px-4">
+            <div className="rounded-2xl bg-white shadow-xl p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <div className="text-sm font-bold text-gray-800">数字输入区</div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    当前：第 {questions.findIndex(item => item.id === activeQuestion.id) + 1} 题
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setActiveQuestionId(null)}
+                    className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-600"
+                  >
+                    收起
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                  >
+                    交卷
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-              >
-                交卷
-              </button>
-            </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {keypadKeys.map(key => (
-                <button
-                  key={key}
-                  onClick={() => handleDigitInput(key)}
-                  disabled={!activeQuestionId || isSubmitting}
-                  className={`rounded-lg py-3 text-base font-bold transition-all ${
-                    key === '清空'
-                      ? 'bg-amber-50 text-amber-700'
-                      : key === '退格'
-                        ? 'bg-rose-50 text-rose-600'
-                        : 'bg-gray-50 text-gray-700'
-                  } disabled:opacity-40`}
-                >
-                  {key}
-                </button>
-              ))}
+              <div className="grid grid-cols-3 gap-2">
+                {keypadKeys.map(key => (
+                  <button
+                    key={key}
+                    onClick={() => handleDigitInput(key)}
+                    disabled={isSubmitting}
+                    className={`rounded-lg py-3 text-base font-bold transition-all ${
+                      key === '清空'
+                        ? 'bg-amber-50 text-amber-700'
+                        : key === '退格'
+                          ? 'bg-rose-50 text-rose-600'
+                          : 'bg-gray-50 text-gray-700'
+                    } disabled:opacity-40`}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }
