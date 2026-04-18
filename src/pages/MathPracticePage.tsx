@@ -195,6 +195,18 @@ export default function MathPracticePage() {
               <div className="text-[11px] text-gray-400">倒计时</div>
             </div>
           </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="text-xs text-gray-400">
+              当前模式：{mode === 'review' ? '错题重练' : '整卷训练'}
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              交卷
+            </button>
+          </div>
           <div className="mt-3 bg-gray-100 rounded-full h-2 overflow-hidden">
             <div
               className="h-full rounded-full bg-primary transition-all"
@@ -315,21 +327,12 @@ export default function MathPracticePage() {
                     当前：第 {questions.findIndex(item => item.id === activeQuestion.id) + 1} 题
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveQuestionId(null)}
-                    className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-600"
-                  >
-                    收起
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
-                  >
-                    交卷
-                  </button>
-                </div>
+                <button
+                  onClick={() => setActiveQuestionId(null)}
+                  className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-bold text-gray-600"
+                >
+                  收起
+                </button>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
