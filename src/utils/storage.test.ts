@@ -208,6 +208,7 @@ describe('math storage by mode', () => {
       completedCount: 1,
     })
     expect(progress.latestAttempt?.id).toBe(legacyAttempt.id)
+    expect(progress.attemptHistory.map(attempt => attempt.id)).toEqual([legacyAttempt.id])
   })
 
   it('keeps paper and quick scores separate and excludes review from best scores', () => {
@@ -220,5 +221,57 @@ describe('math storage by mode', () => {
     expect(getMathModeProgress(afterReview, 'quick').bestScore).toBe(18)
     expect('review' in afterReview.modeProgress).toBe(false)
     expect(afterReview.latestAttempt?.mode).toBe('review')
+    expect(afterReview.attemptHistory.map(attempt => attempt.id)).toEqual([
+      'paper-88',
+      'quick-18',
+      'review-5',
+    ])
+  })
+
+  it('keeps only the latest 180 days of math attempt history', () => {
+    const oldAttempt = {
+      ...createMathAttempt('quick', 12, 'old'),
+      completedAt: '2025-12-01T09:00:00.000Z',
+    }
+    const recentAttempt = createMathAttempt('quick', 18, 'recent')
+    const progress = normalizeMathProgressData({
+      schemaVersion: MATH_SCHEMA_VERSION,
+      modeProgress: {},
+      latestAttempt: recentAttempt,
+      attemptHistory: [oldAttempt, recentAttempt],
+      wrongQuestions: [],
+    }, new Date(2026, 6, 24, 9))
+
+    expect(progress.attemptHistory.map(attempt => attempt.id)).toEqual(['recent'])
+  })
+
+  it('seeds v3 history from v2 per-mode latest attempts', () => {
+    const paperAttempt = createMathAttempt('paper', 90, 'paper-latest')
+    const quickAttempt = createMathAttempt('quick', 17, 'quick-latest')
+    const progress = normalizeMathProgressData({
+      schemaVersion: 2,
+      modeProgress: {
+        paper: {
+          bestScore: 90,
+          lastAttempt: paperAttempt,
+          completedCount: 2,
+        },
+        quick: {
+          bestScore: 17,
+          lastAttempt: quickAttempt,
+          completedCount: 3,
+        },
+      },
+      latestAttempt: quickAttempt,
+      wrongQuestions: [],
+    }, new Date(2026, 6, 24, 9))
+
+    expect(progress.schemaVersion).toBe(3)
+    expect(progress.attemptHistory.map(attempt => attempt.id)).toEqual([
+      'paper-latest',
+      'quick-latest',
+    ])
+    expect(getMathModeProgress(progress, 'paper').bestScore).toBe(90)
+    expect(getMathModeProgress(progress, 'quick').bestScore).toBe(17)
   })
 })

@@ -18,6 +18,7 @@ import TodayPlanPage from './pages/TodayPlanPage'
 import DiagnosticPage from './pages/DiagnosticPage'
 import DiagnosticResultPage from './pages/DiagnosticResultPage'
 import ReviewQueuePage from './pages/ReviewQueuePage'
+import ParentReportPage from './pages/ParentReportPage'
 
 const router = createHashRouter([
   {
@@ -46,6 +47,7 @@ const router = createHashRouter([
       { path: 'bridge/review/quiz', element: <QuizPage practiceMode="daily-review" /> },
       { path: 'bridge/verification', element: <ReviewQueuePage mode="verification" /> },
       { path: 'bridge/verification/quiz', element: <QuizPage practiceMode="verification" /> },
+      { path: 'bridge/report', element: <ParentReportPage /> },
     ],
   },
 ])

@@ -162,8 +162,14 @@ function normalizeWordLearningState(value: unknown): WordLearningState | null {
     level,
     correctStreak: toNonNegativeInteger(value.correctStreak),
     wrongCount: toNonNegativeInteger(value.wrongCount),
+    ...(toOptionalString(value.firstSeenAt)
+      ? { firstSeenAt: String(value.firstSeenAt) }
+      : {}),
     ...(toOptionalString(value.lastReviewedAt)
       ? { lastReviewedAt: String(value.lastReviewedAt) }
+      : {}),
+    ...(toOptionalString(value.lastMasteredAt)
+      ? { lastMasteredAt: String(value.lastMasteredAt) }
       : {}),
     ...(level > 0 && nextReviewDate ? { nextReviewDate } : {}),
     ...(isLocalDateKey(value.lastCountedCorrectDate)
@@ -657,11 +663,36 @@ function getDefaultMathData(): MathProgressData {
     schemaVersion: MATH_SCHEMA_VERSION,
     modeProgress: {},
     latestAttempt: null,
+    attemptHistory: [],
     wrongQuestions: [],
   }
 }
 
-export function normalizeMathProgressData(value: unknown): MathProgressData {
+function normalizeMathAttemptHistory(
+  value: unknown,
+  fallbackAttempts: Array<MathAttempt | null>,
+  now: Date,
+): MathAttempt[] {
+  const candidates = Array.isArray(value)
+    ? value.map(normalizeMathAttempt).filter((item): item is MathAttempt => !!item)
+    : fallbackAttempts.filter((item): item is MathAttempt => !!item)
+  const uniqueAttempts = new Map(candidates.map(attempt => [attempt.id, attempt]))
+  const cutoff = new Date(now)
+  cutoff.setHours(0, 0, 0, 0)
+  cutoff.setDate(cutoff.getDate() - 179)
+
+  return [...uniqueAttempts.values()]
+    .filter(attempt => {
+      const completedAt = new Date(attempt.completedAt)
+      return !Number.isNaN(completedAt.getTime()) && completedAt >= cutoff
+    })
+    .sort((first, second) => first.completedAt.localeCompare(second.completedAt))
+}
+
+export function normalizeMathProgressData(
+  value: unknown,
+  now = new Date(),
+): MathProgressData {
   if (!isRecord(value)) return getDefaultMathData()
 
   const modeProgress = Object.fromEntries(scoredMathModes.flatMap(mode => {
@@ -683,10 +714,21 @@ export function normalizeMathProgressData(value: unknown): MathProgressData {
     }
   }
 
+  const latestAttempt = normalizeMathAttempt(value.latestAttempt)
+  const attemptHistory = normalizeMathAttemptHistory(
+    value.attemptHistory,
+    [
+      ...Object.values(modeProgress).map(item => item.lastAttempt),
+      latestAttempt,
+    ],
+    now,
+  )
+
   return {
     schemaVersion: MATH_SCHEMA_VERSION,
     modeProgress,
-    latestAttempt: normalizeMathAttempt(value.latestAttempt),
+    latestAttempt,
+    attemptHistory,
     wrongQuestions: Array.isArray(value.wrongQuestions)
       ? value.wrongQuestions
         .map(normalizeMathWrongQuestion)
@@ -794,7 +836,10 @@ export function markWordLearned(
 ): ProgressData {
   const isNewWord = !data.learnedWords.includes(wordId)
   const updated = isNewWord ? addDailyWord(data, date) : data
-  const wordState = updated.wordMastery[wordId] ?? createWordExposureState(date)
+  const currentState = updated.wordMastery[wordId] ?? createWordExposureState(date)
+  const wordState = currentState.firstSeenAt
+    ? currentState
+    : { ...currentState, firstSeenAt: date.toISOString() }
 
   return {
     ...updated,
@@ -917,6 +962,10 @@ export function saveMathAttempt(
   const next = {
     ...data,
     latestAttempt: attempt,
+    attemptHistory: [
+      ...data.attemptHistory.filter(item => item.id !== attempt.id),
+      attempt,
+    ],
   }
 
   if (attempt.mode === 'review' || options?.updateBestScore === false) {

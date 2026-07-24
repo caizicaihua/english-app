@@ -20,7 +20,9 @@ export interface WordLearningState {
   level: MasteryLevel
   correctStreak: number
   wrongCount: number
+  firstSeenAt?: string
   lastReviewedAt?: string
+  lastMasteredAt?: string
   nextReviewDate?: string
   lastCountedCorrectDate?: string
   prioritySignals: WordPrioritySignals

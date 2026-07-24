@@ -69,6 +69,7 @@ describe('word mastery state machine', () => {
       prioritySignals: {},
       nextReviewDate: '2026-08-01',
     })
+    expect(nextDay.lastMasteredAt).toBe(new Date(2026, 6, 25, 9).toISOString())
   })
 
   it('treats a first wrong answer as encountered level 1', () => {
@@ -85,6 +86,7 @@ describe('word mastery state machine', () => {
       wrongCount: 1,
       nextReviewDate: '2026-07-25',
     })
+    expect(state.firstSeenAt).toBe(new Date(2026, 6, 24, 9).toISOString())
     expect(state.prioritySignals.lastDiagnosticWeakAt).toBeTruthy()
   })
 })

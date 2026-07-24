@@ -54,6 +54,7 @@ export function createWordExposureState(date = new Date()): WordLearningState {
     level: 1,
     correctStreak: 0,
     wrongCount: 0,
+    firstSeenAt: date.toISOString(),
     lastReviewedAt: date.toISOString(),
     nextReviewDate: nextReviewDate(1, today),
     prioritySignals: {},
@@ -78,6 +79,7 @@ export function recordWordResult(
       level,
       correctStreak: 0,
       wrongCount: base.wrongCount + 1,
+      firstSeenAt: base.firstSeenAt ?? timestamp,
       lastReviewedAt: timestamp,
       nextReviewDate: nextReviewDate(level, today),
       lastCountedCorrectDate: undefined,
@@ -98,12 +100,17 @@ export function recordWordResult(
   const prioritySignals = level >= 3
     ? {}
     : base.prioritySignals
+  const lastMasteredAt = level >= 3 && base.level < 3
+    ? date.toISOString()
+    : base.lastMasteredAt
 
   return {
     ...base,
     level,
     correctStreak: shouldAdvance ? 0 : correctStreak,
+    firstSeenAt: base.firstSeenAt ?? date.toISOString(),
     lastReviewedAt: date.toISOString(),
+    ...(lastMasteredAt ? { lastMasteredAt } : {}),
     nextReviewDate: nextReviewDate(level, today),
     lastCountedCorrectDate: countsToday ? today : base.lastCountedCorrectDate,
     prioritySignals,

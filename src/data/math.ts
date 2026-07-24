@@ -1,6 +1,6 @@
 export type MathQuestionType = 'calc' | 'fill' | 'compare'
 
-export const MATH_SCHEMA_VERSION = 2
+export const MATH_SCHEMA_VERSION = 3
 
 export type MathPracticeMode = 'paper' | 'quick' | 'focused' | 'review'
 export type ScoredMathMode = Exclude<MathPracticeMode, 'review'>
@@ -90,6 +90,7 @@ export interface MathProgressData {
   schemaVersion: typeof MATH_SCHEMA_VERSION
   modeProgress: Partial<Record<ScoredMathMode, MathModeProgress>>
   latestAttempt: MathAttempt | null
+  attemptHistory: MathAttempt[]
   wrongQuestions: MathWrongQuestion[]
 }
 

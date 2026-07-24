@@ -172,9 +172,25 @@ export default function BridgeHomePage() {
         >
           <div className="text-2xl">🧮</div>
           <div className="mt-2 font-bold text-gray-700">数学练习</div>
-          <div className="mt-1 text-xs text-gray-400">当前可做 100 题训练</div>
+          <div className="mt-1 text-xs text-gray-400">20 题快速练或 100 题整卷</div>
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={() => navigate('/bridge/report')}
+        className="mt-3 w-full rounded-2xl bg-white p-4 text-left shadow-sm active:scale-[0.98]"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="font-bold text-gray-700">📋 家长周报</div>
+            <div className="mt-1 text-xs text-gray-400">
+              查看本周学习天数、掌握进展和下周建议
+            </div>
+          </div>
+          <div className="text-xl text-gray-300">›</div>
+        </div>
+      </button>
 
       <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
         <div className="font-bold text-amber-800">学习节奏</div>
