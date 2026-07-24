@@ -146,6 +146,27 @@ describe('daily study plan', () => {
     expect(recalculated.completedTaskIds).toContain('new_words')
   })
 
+  it('regenerates plans created before the math scheduling fix', () => {
+    const progress = createProgress()
+    const settings = createSettings({ studyDaysPerWeek: 3 })
+    const currentPlan = buildDailyStudyPlan(progress, settings, date)
+    const legacyPlan = {
+      ...currentPlan,
+      settingsSignature: currentPlan.settingsSignature.replace(/^plan-v2\|/, ''),
+      includeMath: false,
+      completedTaskIds: ['new_words' as const],
+    }
+    const recalculated = getOrCreateDailyStudyPlan(
+      saveDailyStudyPlan(progress, legacyPlan),
+      settings,
+      date,
+    )
+
+    expect(recalculated.settingsSignature).toMatch(/^plan-v2\|/)
+    expect(recalculated.includeMath).toBe(true)
+    expect(recalculated.completedTaskIds).toContain('new_words')
+  })
+
   it('respects weekly study frequency and the six-week date range', () => {
     const progress = createProgress()
     const settings = createSettings({ studyDaysPerWeek: 3 })
@@ -166,9 +187,46 @@ describe('daily study plan', () => {
     )
 
     expect(friday.quizQuestionCount).toBeGreaterThan(0)
+    expect(friday.includeMath).toBe(true)
     expect(saturday.quizQuestionCount).toBe(0)
     expect(saturday.newWordIds).toEqual([])
     expect(afterPlan.quizQuestionCount).toBe(0)
+  })
+
+  it('selects 2 or 3 math sessions from the actual scheduled study days', () => {
+    const progress = createProgress()
+    const cases: Array<{
+      studyDaysPerWeek: 3 | 4 | 5
+      focus: BridgePlanSettings['focus']
+      expectedMathDays: number[]
+    }> = [
+      { studyDaysPerWeek: 3, focus: 'balanced', expectedMathDays: [1, 5] },
+      { studyDaysPerWeek: 3, focus: 'english', expectedMathDays: [1, 5] },
+      { studyDaysPerWeek: 3, focus: 'math', expectedMathDays: [1, 3, 5] },
+      { studyDaysPerWeek: 4, focus: 'balanced', expectedMathDays: [2, 4] },
+      { studyDaysPerWeek: 4, focus: 'english', expectedMathDays: [2, 4] },
+      { studyDaysPerWeek: 4, focus: 'math', expectedMathDays: [1, 4, 5] },
+      { studyDaysPerWeek: 5, focus: 'balanced', expectedMathDays: [2, 4] },
+      { studyDaysPerWeek: 5, focus: 'english', expectedMathDays: [2, 4] },
+      { studyDaysPerWeek: 5, focus: 'math', expectedMathDays: [1, 3, 5] },
+    ]
+    const week = Array.from(
+      { length: 7 },
+      (_, dayOffset) => new Date(2026, 6, 20 + dayOffset, 9),
+    )
+
+    for (const testCase of cases) {
+      const settings = createSettings({
+        startDate: '2026-07-20',
+        studyDaysPerWeek: testCase.studyDaysPerWeek,
+        focus: testCase.focus,
+      })
+      const mathDays = week
+        .filter(day => buildDailyStudyPlan(progress, settings, day).includeMath)
+        .map(day => day.getDay())
+
+      expect(mathDays).toEqual(testCase.expectedMathDays)
+    }
   })
 
   it('uses one diagnostic section as the whole daily task', () => {

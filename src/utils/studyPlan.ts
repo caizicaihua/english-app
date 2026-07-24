@@ -10,6 +10,13 @@ import type { ProgressData } from './storage'
 import { addLocalDays, recordUnitFollowUpResult } from './mastery'
 import { getLocalDateKey, updateWordMastery } from './storage'
 
+const DAILY_PLAN_ALGORITHM_VERSION = 2
+const studyDaysByFrequency: Record<3 | 4 | 5, number[]> = {
+  3: [1, 3, 5],
+  4: [1, 2, 4, 5],
+  5: [1, 2, 3, 4, 5],
+}
+
 interface ReinforcementCandidate {
   wordId: string
   type: 'review' | 'verification'
@@ -40,6 +47,7 @@ function getPlanSignature(
         : `diagnostic-ready:${latestResult?.id ?? progress.diagnosticSkippedAt ?? 'skipped'}`
 
   return [
+    `plan-v${DAILY_PLAN_ALGORITHM_VERSION}`,
     settings.startDate,
     settings.studyDaysPerWeek,
     settings.dailyMinutes,
@@ -165,9 +173,26 @@ function selectNewWords(
 }
 
 function shouldIncludeMath(date: Date, settings: BridgePlanSettings): boolean {
-  const day = date.getDay()
-  if (settings.focus === 'math') return day === 1 || day === 3 || day === 5
-  return day === 2 || day === 4
+  const studyDays = studyDaysByFrequency[settings.studyDaysPerWeek]
+  const mathSessionCount = settings.focus === 'math'
+    ? Math.min(3, studyDays.length)
+    : Math.min(2, studyDays.length)
+  const mathDayIndexes = settings.focus === 'math'
+    ? Array.from(
+      { length: mathSessionCount },
+      (_, index) => Math.round(
+        index * (studyDays.length - 1) / Math.max(1, mathSessionCount - 1),
+      ),
+    )
+    : Array.from(
+      { length: mathSessionCount },
+      (_, index) => Math.round(
+        (index + 1) * (studyDays.length + 1) / (mathSessionCount + 1),
+      ) - 1,
+    )
+  const mathDays = mathDayIndexes.map(index => studyDays[index])
+
+  return mathDays.includes(date.getDay())
 }
 
 function isScheduledStudyDay(date: Date, settings: BridgePlanSettings): boolean {
@@ -175,12 +200,6 @@ function isScheduledStudyDay(date: Date, settings: BridgePlanSettings): boolean 
   const startDate = settings.startDate || dateKey
   const endDate = addLocalDays(startDate, 41)
   if (dateKey < startDate || dateKey > endDate) return false
-
-  const studyDaysByFrequency: Record<3 | 4 | 5, number[]> = {
-    3: [1, 3, 5],
-    4: [1, 2, 4, 5],
-    5: [1, 2, 3, 4, 5],
-  }
 
   return studyDaysByFrequency[settings.studyDaysPerWeek].includes(date.getDay())
 }
