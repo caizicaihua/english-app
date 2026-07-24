@@ -71,6 +71,7 @@ export interface ProgressData {
   learnedWords: string[]
   wrongWords: string[]
   dailyWords: Record<string, number>
+  dailyWordIds: Record<string, string[]>
   streak: number
   lastStudyDate: string
   achievements: string[]
@@ -136,6 +137,16 @@ function normalizeNumberRecord(
     if (normalized < minimum || (maximum !== undefined && normalized > maximum)) return []
     return [[key, normalized]]
   }))
+}
+
+function normalizeStringArrayRecord(value: unknown): Record<string, string[]> {
+  if (!isRecord(value)) return {}
+
+  return Object.fromEntries(Object.entries(value).flatMap(([dateKey, items]) => (
+    isLocalDateKey(dateKey) && Array.isArray(items)
+      ? [[dateKey, toStringArray(items)]]
+      : []
+  )))
 }
 
 function normalizeWordPrioritySignals(value: unknown): WordPrioritySignals {
@@ -435,6 +446,7 @@ function getDefaultData(): ProgressData {
     learnedWords: [],
     wrongWords: [],
     dailyWords: {},
+    dailyWordIds: {},
     streak: 0,
     lastStudyDate: '',
     achievements: [],
@@ -468,6 +480,7 @@ export function normalizeProgressData(value: unknown, now = new Date()): Progres
     learnedWords: [...new Set([...learnedWords, ...encounteredWordIds])],
     wrongWords,
     dailyWords: normalizeNumberRecord(value.dailyWords, 0),
+    dailyWordIds: normalizeStringArrayRecord(value.dailyWordIds),
     streak: toNonNegativeInteger(value.streak),
     lastStudyDate: isLocalDateKey(value.lastStudyDate) ? value.lastStudyDate : '',
     achievements: toStringArray(value.achievements),
@@ -817,15 +830,27 @@ export function recordStudyActivity(data: ProgressData, date = new Date()): Prog
   return updateStreak(data, date)
 }
 
-export function addDailyWord(data: ProgressData, date = new Date()): ProgressData {
+export function addDailyWord(
+  data: ProgressData,
+  date = new Date(),
+  wordId?: string,
+): ProgressData {
   const today = getLocalDateKey(date)
   const updated = updateStreak(data, date)
+  const dailyWordIds = wordId
+    ? {
+      ...updated.dailyWordIds,
+      [today]: [...new Set([...(updated.dailyWordIds[today] ?? []), wordId])],
+    }
+    : updated.dailyWordIds
+
   return {
     ...updated,
     dailyWords: {
       ...updated.dailyWords,
       [today]: (updated.dailyWords[today] || 0) + 1,
     },
+    dailyWordIds,
   }
 }
 
@@ -835,7 +860,7 @@ export function markWordLearned(
   date = new Date(),
 ): ProgressData {
   const isNewWord = !data.learnedWords.includes(wordId)
-  const updated = isNewWord ? addDailyWord(data, date) : data
+  const updated = isNewWord ? addDailyWord(data, date, wordId) : data
   const currentState = updated.wordMastery[wordId] ?? createWordExposureState(date)
   const wordState = currentState.firstSeenAt
     ? currentState

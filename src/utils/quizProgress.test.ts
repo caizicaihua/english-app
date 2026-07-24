@@ -87,4 +87,36 @@ describe('quiz mastery updates', () => {
     })
     expect(progress.unitFollowUpPlans[0].completedAt).toBeTruthy()
   })
+
+  it('settles a pending unit follow-up word from an ordinary review answer', () => {
+    const followUpPlan: UnitFollowUpPlan = {
+      unitKey: '1-1',
+      sourceDiagnosticId: 'diagnostic-1',
+      reason: 'review',
+      candidateWordIds: [word.id],
+      pendingWordIds: [word.id],
+      assessedWordIds: [],
+      correctCount: 0,
+      createdAt: '2026-07-24T08:00:00.000Z',
+    }
+    const progress = applyQuizAnswer({
+      progress: {
+        ...normalizeProgressData(undefined),
+        unitFollowUpPlans: [followUpPlan],
+      },
+      question: {
+        type: 'zh2en',
+        word,
+        options: ['apple'],
+        correctAnswer: 'apple',
+      },
+      isCorrect: true,
+      source: 'review',
+      answeredAt: new Date(2026, 6, 24, 9),
+    })
+
+    expect(progress.unitFollowUpPlans[0].pendingWordIds).toEqual([])
+    expect(progress.unitFollowUpPlans[0].assessedWordIds).toEqual([word.id])
+    expect(progress.unitFollowUpPlans[0].completedAt).toBeTruthy()
+  })
 })

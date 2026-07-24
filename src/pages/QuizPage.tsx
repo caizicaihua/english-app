@@ -20,6 +20,7 @@ import {
 import {
   completeDailyTask,
   getActiveDailyQueueWordIds,
+  getDailyQuizWordIds,
   getOrCreateDailyStudyPlan,
   saveDailyStudyPlan,
 } from '../utils/studyPlan'
@@ -381,7 +382,7 @@ function ResultScreen({
 // --- Main Quiz Page ---
 
 interface QuizPageProps {
-  practiceMode?: 'wrong-book' | 'daily-review' | 'verification'
+  practiceMode?: 'wrong-book' | 'daily-review' | 'verification' | 'daily-quiz'
 }
 
 interface PracticeConfig {
@@ -433,6 +434,18 @@ const practiceConfigs: Record<NonNullable<QuizPageProps['practiceMode']>, Practi
     dailyTaskId: 'verification',
     studyTaskType: 'verification',
   },
+  'daily-quiz': {
+    name: 'Daily Quiz',
+    nameZh: '英语小练习',
+    color: '#7c3aed',
+    emoji: '🎯',
+    emptyTitle: '今天没有需要练习的单词',
+    resultTitle: '今日英语练习完成！',
+    backPath: '/bridge/today',
+    source: 'quiz',
+    dailyTaskId: 'quiz',
+    studyTaskType: 'quiz',
+  },
 }
 
 function getPracticeWordIds(
@@ -445,6 +458,8 @@ function getPracticeWordIds(
   if (progress.dailyPlans[plan.date] !== plan) {
     saveProgress(saveDailyStudyPlan(progress, plan))
   }
+
+  if (practiceMode === 'daily-quiz') return getDailyQuizWordIds(plan)
 
   return getActiveDailyQueueWordIds(
     progress,
@@ -540,7 +555,9 @@ export default function QuizPage({ practiceMode }: QuizPageProps) {
     () => {
       void retryKey
       if (!unit) return []
-      return practiceMode === 'daily-review' || practiceMode === 'verification'
+      return practiceMode === 'daily-review'
+        || practiceMode === 'verification'
+        || practiceMode === 'daily-quiz'
         ? generateWordCheckQuestions(unit.words, allGradeWords)
         : generateQuestions(unit, allGradeWords)
     },

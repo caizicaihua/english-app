@@ -182,10 +182,22 @@ export function buildWeeklyReport(
   ))
   const dailyWordEntries = Object.entries(progress.dailyWords)
     .filter(([dateKey, count]) => dateKey >= startDate && dateKey <= endDate && count > 0)
-  const firstSeenStates = Object.values(progress.wordMastery)
-    .filter(state => isDateInRange(state.firstSeenAt, startDate, endDate))
+  const dailyWordIdEntries = Object.entries(progress.dailyWordIds)
+    .filter(([dateKey]) => dateKey >= startDate && dateKey <= endDate)
+  const firstSeenEntries = Object.entries(progress.wordMastery)
+    .filter(([, state]) => isDateInRange(state.firstSeenAt, startDate, endDate))
+  const firstSeenStates = firstSeenEntries.map(([, state]) => state)
   const firstSeenCount = firstSeenStates.length
-  const dailyNewWordCount = dailyWordEntries.reduce((sum, [, count]) => sum + count, 0)
+  const newWordIds = new Set([
+    ...firstSeenEntries.map(([wordId]) => wordId),
+    ...dailyWordIdEntries.flatMap(([, wordIds]) => wordIds),
+  ])
+  const explicitDailyCounts = new Map(
+    dailyWordIdEntries.map(([dateKey, wordIds]) => [dateKey, new Set(wordIds).size]),
+  )
+  const legacyNewWordCount = dailyWordEntries.reduce((sum, [dateKey, count]) => (
+    sum + Math.max(0, count - (explicitDailyCounts.get(dateKey) ?? 0))
+  ), 0)
   const masteredStates = Object.values(progress.wordMastery)
     .filter(state => isDateInRange(state.lastMasteredAt, startDate, endDate))
   const masteredWordCount = masteredStates.length
@@ -230,7 +242,7 @@ export function buildWeeklyReport(
     completionRate: plannedTaskCount > 0
       ? Math.round((completedTaskCount / plannedTaskCount) * 100)
       : null,
-    newWordCount: Math.max(firstSeenCount, dailyNewWordCount),
+    newWordCount: newWordIds.size + legacyNewWordCount,
     reviewedWordCount: weeklySessions
       .filter(session => session.taskType === 'review' || session.taskType === 'verification')
       .reduce((sum, session) => sum + session.itemCount, 0),

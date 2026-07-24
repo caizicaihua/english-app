@@ -35,13 +35,6 @@ function loadTodayContext(): TodayContext {
   return { progress, plan }
 }
 
-function routeForWordIds(wordIds: string[], mode: 'learn' | 'quiz'): string {
-  const [gradeId = '1', unitId = '1'] = (wordIds[0] ?? '1-1-1').split('-')
-  return mode === 'learn'
-    ? `/grade/${gradeId}/unit/${unitId}`
-    : `/grade/${gradeId}/quiz/${unitId}`
-}
-
 export default function TodayPlanPage() {
   const navigate = useNavigate()
   const [context, setContext] = useState<TodayContext>(loadTodayContext)
@@ -108,7 +101,8 @@ export default function TodayPlanPage() {
       title: '今天的新词',
       description: '少量认识、跟读和理解即可，不要求一次全部默写。',
       countLabel: `${plan.newWordIds.length} 个词`,
-      onOpen: () => navigate(routeForWordIds(plan.newWordIds, 'learn')),
+      onOpen: () => navigate('/bridge/new-words'),
+      canMarkComplete: false,
     }] : []),
     ...(plan.quizQuestionCount > 0 ? [{
       id: 'quiz' as const,
@@ -116,10 +110,8 @@ export default function TodayPlanPage() {
       title: '英语小练习',
       description: '用选择、听力和拼写检查今天是否真的理解。',
       countLabel: `${plan.quizQuestionCount} 题`,
-      onOpen: () => navigate(routeForWordIds(
-        [...plan.reviewWordIds, ...plan.verificationWordIds, ...plan.newWordIds],
-        'quiz',
-      )),
+      onOpen: () => navigate('/bridge/daily-quiz'),
+      canMarkComplete: false,
     }] : []),
     ...(plan.includeMath ? [{
       id: 'math' as const,
@@ -127,12 +119,7 @@ export default function TodayPlanPage() {
       title: '数学口算',
       description: '用 20 道短练习保持百以内计算手感，做完自动记录。',
       countLabel: '20 题 · 5 分钟',
-      onOpen: () => navigate('/math/practice', {
-        state: {
-          mode: 'quick',
-          title: '每日口算快速练',
-        },
-      }),
+      onOpen: () => navigate('/math/practice?mode=quick'),
       canMarkComplete: false,
     }] : []),
   ]

@@ -1,10 +1,15 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { loadGrade, type Grade } from '../data/words'
+import { loadGrade, loadWordsByIds, type Grade } from '../data/words'
 import { loadProgress, loadSettings, saveProgress, saveSettings, markWordLearned } from '../utils/storage'
 import { getExampleSpeechRate, speak, speakDialogue, speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
 import MasteryBadge from '../components/MasteryBadge'
+import {
+  completeDailyTask,
+  getOrCreateDailyStudyPlan,
+  saveDailyStudyPlan,
+} from '../utils/studyPlan'
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -14,9 +19,14 @@ function containsWord(text: string, answer: string): boolean {
   return new RegExp(`\\b${escapeRegExp(answer)}\\b`, 'i').test(text)
 }
 
-export default function LearnPage() {
+interface LearnPageProps {
+  practiceMode?: 'daily-new'
+}
+
+export default function LearnPage({ practiceMode }: LearnPageProps) {
   const { gradeId, unitId } = useParams()
   const navigate = useNavigate()
+  const isDailyNew = practiceMode === 'daily-new'
   const [grade, setGrade] = useState<Grade | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -26,11 +36,16 @@ export default function LearnPage() {
   const [completed, setCompleted] = useState(false)
   const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeedPreset>(() => loadSettings().speechSpeed)
 
-  const markLearned = useCallback((wordId: string) => {
-    const progress = loadProgress()
-    const updated = markWordLearned(progress, wordId)
+  const markLearned = useCallback((wordId: string, completesDeck = false) => {
+    let updated = markWordLearned(loadProgress(), wordId)
+
+    if (isDailyNew && completesDeck) {
+      const plan = getOrCreateDailyStudyPlan(updated, loadSettings().bridgePlan)
+      updated = completeDailyTask(updated, plan.date, 'new_words')
+    }
+
     saveProgress(updated)
-  }, [])
+  }, [isDailyNew])
 
   const updateSpeechSpeed = (speed: SpeechSpeedPreset) => {
     setSpeechSpeed(speed)
@@ -39,6 +54,37 @@ export default function LearnPage() {
 
   useEffect(() => {
     let active = true
+
+    if (isDailyNew) {
+      const progress = loadProgress()
+      const plan = getOrCreateDailyStudyPlan(progress, loadSettings().bridgePlan)
+      const storedProgress = progress.dailyPlans[plan.date] === plan
+        ? progress
+        : saveDailyStudyPlan(progress, plan)
+
+      if (storedProgress !== progress) saveProgress(storedProgress)
+
+      loadWordsByIds(plan.newWordIds).then(words => {
+        if (!active) return
+        setGrade({
+          id: 0,
+          name: 'Today New Words',
+          color: '#7c3aed',
+          emoji: '🌱',
+          units: [{
+            id: 0,
+            name: 'Today New Words',
+            nameZh: '今天的新词',
+            words,
+          }],
+        })
+        setLoading(false)
+      })
+
+      return () => {
+        active = false
+      }
+    }
 
     loadGrade(Number(gradeId)).then(data => {
       if (!active) return
@@ -49,17 +95,33 @@ export default function LearnPage() {
     return () => {
       active = false
     }
-  }, [gradeId, unitId])
+  }, [gradeId, isDailyNew, unitId])
 
-  const unit = grade?.units.find(u => u.id === Number(unitId))
+  const unit = grade?.units.find(u => u.id === (isDailyNew ? 0 : Number(unitId)))
 
   if (loading) return <div className="text-center py-10 text-gray-400">加载中...</div>
 
   if (!grade || !unit) return <div className="text-center py-10">未找到该单元</div>
 
+  if (unit.words.length === 0) {
+    return (
+      <div className="text-center py-10">
+        <div className="text-5xl mb-4">🌤️</div>
+        <h2 className="text-xl font-bold text-gray-800">今天没有新词任务</h2>
+        <button
+          onClick={() => navigate('/bridge/today')}
+          className="mt-5 px-6 py-3 rounded-xl bg-primary text-white font-bold"
+        >
+          返回今日任务
+        </button>
+      </div>
+    )
+  }
+
   const unitIndex = grade.units.findIndex(item => item.id === unit.id)
   const previousUnit = unitIndex > 0 ? grade.units[unitIndex - 1] : null
-  const isLocked = !!previousUnit
+  const isLocked = !isDailyNew
+    && !!previousUnit
     && !loadProgress().completedUnits[`${grade.id}-${previousUnit.id}`]
 
   if (isLocked) {
@@ -87,8 +149,9 @@ export default function LearnPage() {
   )
 
   const goNext = () => {
-    markLearned(word.id)
-    if (currentIndex >= words.length - 1) {
+    const completesDeck = currentIndex >= words.length - 1
+    markLearned(word.id, completesDeck)
+    if (completesDeck) {
       setCompleted(true)
       return
     }
@@ -121,17 +184,21 @@ export default function LearnPage() {
         </p>
         <div className="flex gap-3 justify-center">
           <button
-            onClick={() => navigate(`/grade/${grade.id}/quiz/${unit.id}`)}
+            onClick={() => navigate(
+              isDailyNew
+                ? '/bridge/daily-quiz'
+                : `/grade/${grade.id}/quiz/${unit.id}`,
+            )}
             className="px-6 py-3 rounded-xl text-white font-bold shadow-md active:scale-95 transition-transform"
             style={{ backgroundColor: grade.color }}
           >
-            🎯 去闯关
+            🎯 {isDailyNew ? '做今日小练习' : '去闯关'}
           </button>
           <button
-            onClick={() => navigate(`/grade/${grade.id}`)}
+            onClick={() => navigate(isDailyNew ? '/bridge/today' : `/grade/${grade.id}`)}
             className="px-6 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform"
           >
-            返回
+            {isDailyNew ? '返回今日任务' : '返回'}
           </button>
         </div>
       </div>

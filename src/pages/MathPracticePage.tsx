@@ -20,6 +20,12 @@ import {
   saveProgress,
 } from '../utils/storage'
 import { completeDailyTask } from '../utils/studyPlan'
+import {
+  clearMathPracticeDraft,
+  getMinimumAnsweredCount,
+  loadMathPracticeDraft,
+  saveMathPracticeDraft,
+} from '../utils/mathPracticeDraft'
 
 type PracticeLocationState = {
   reviewQuestions?: MathQuestion[]
@@ -70,27 +76,54 @@ function getModeLabel(mode: MathPracticeMode): string {
   return '整卷训练'
 }
 
-export default function MathPracticePage() {
+function getRequestedMode(
+  search: string,
+  state: PracticeLocationState,
+): MathPracticeMode {
+  const queryMode = new URLSearchParams(search).get('mode')
+  if (queryMode === 'quick' || queryMode === 'review' || queryMode === 'paper') {
+    return queryMode
+  }
+  if (state.reviewQuestions?.length || state.mode === 'review') return 'review'
+  if (state.mode === 'quick') return 'quick'
+  return 'paper'
+}
+
+function MathPracticeSession() {
   const navigate = useNavigate()
   const location = useLocation()
   const state = (location.state ?? {}) as PracticeLocationState
-  const reviewQuestions = state.reviewQuestions?.length ? state.reviewQuestions : null
-  const mode: MathPracticeMode = reviewQuestions
-    ? 'review'
-    : state.mode === 'quick'
-      ? 'quick'
-      : 'paper'
+  const mode = getRequestedMode(location.search, state)
   const config = mode === 'quick' ? mathQuickConfig : mathPaperConfig
-  const title = state.title ?? (mode === 'review' ? '错题重练' : config.title)
-  const [questions] = useState<MathQuestion[]>(
-    () => reviewQuestions ?? generateMathPaper(config),
-  )
-  const durationSeconds = mode === 'review'
-    ? getReviewDuration(questions.length)
-    : config.durationSeconds
+  const [initialSession] = useState(() => {
+    const draft = loadMathPracticeDraft(mode)
+    if (draft) return draft
 
-  const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [timeLeft, setTimeLeft] = useState(durationSeconds)
+    const reviewQuestions = mode === 'review'
+      ? state.reviewQuestions?.length
+        ? state.reviewQuestions
+        : loadMathProgress().wrongQuestions.map(item => item.question)
+      : null
+    const questions = reviewQuestions ?? generateMathPaper(config)
+    const durationSeconds = mode === 'review'
+      ? getReviewDuration(questions.length)
+      : config.durationSeconds
+
+    return {
+      mode,
+      title: state.title ?? (mode === 'review' ? '错题重练' : config.title),
+      questions,
+      durationSeconds,
+      answers: {} as Record<string, string>,
+      timeLeft: durationSeconds,
+      savedAt: new Date().toISOString(),
+    }
+  })
+  const title = initialSession.title
+  const questions = initialSession.questions
+  const durationSeconds = initialSession.durationSeconds
+  const [answers, setAnswers] = useState<Record<string, string>>(initialSession.answers)
+  const [timeLeft, setTimeLeft] = useState(initialSession.timeLeft)
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(
     questions.find(question => question.type !== 'compare')?.id ?? null
   )
@@ -101,6 +134,8 @@ export default function MathPracticePage() {
 
   const sections = useMemo(() => getQuestionSections(questions), [questions])
   const answeredCount = countAnsweredQuestions(questions, answers)
+  const minimumAnsweredCount = getMinimumAnsweredCount(mode, questions.length)
+  const qualifiesForDailyCompletion = answeredCount >= minimumAnsweredCount
   const activeQuestion = questions.find(question => question.id === activeQuestionId) ?? null
   const isKeypadVisible = !!activeQuestion && activeQuestion.type !== 'compare'
 
@@ -123,7 +158,7 @@ export default function MathPracticePage() {
     progress = saveMathAttempt(progress, attempt)
 
     const wrongQuestions = attempt.questions
-      .filter(item => !item.isCorrect)
+      .filter(item => item.userAnswer.trim() !== '' && !item.isCorrect)
       .map(item => item.question)
 
     if (wrongQuestions.length > 0) {
@@ -141,7 +176,7 @@ export default function MathPracticePage() {
     }
 
     saveMathProgress(progress)
-    if (mode === 'quick') {
+    if (mode === 'quick' && qualifiesForDailyCompletion) {
       const learningProgress = loadProgress()
       const completedProgress = completeDailyTask(
         learningProgress,
@@ -150,8 +185,18 @@ export default function MathPracticePage() {
       )
       if (completedProgress !== learningProgress) saveProgress(completedProgress)
     }
+    clearMathPracticeDraft()
     navigate('/math/result', { replace: true })
-  }, [answers, durationSeconds, mode, navigate, questions, timeLeft, title])
+  }, [
+    answers,
+    durationSeconds,
+    mode,
+    navigate,
+    qualifiesForDailyCompletion,
+    questions,
+    timeLeft,
+    title,
+  ])
 
   const handleSubmitRequest = () => {
     if (isSubmitting) return
@@ -165,6 +210,7 @@ export default function MathPracticePage() {
 
   useEffect(() => {
     if (hasSubmittedRef.current) return
+    if (questions.length === 0) return
     if (timeLeft <= 0) {
       const timeout = window.setTimeout(() => {
         submitAttempt()
@@ -178,7 +224,20 @@ export default function MathPracticePage() {
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [submitAttempt, timeLeft])
+  }, [questions.length, submitAttempt, timeLeft])
+
+  useEffect(() => {
+    if (hasSubmittedRef.current || questions.length === 0) return
+
+    saveMathPracticeDraft({
+      mode,
+      title,
+      questions,
+      durationSeconds,
+      answers,
+      timeLeft,
+    })
+  }, [answers, durationSeconds, mode, questions, timeLeft, title])
 
   const handleDigitInput = (value: string) => {
     if (!activeQuestionId) return
@@ -215,6 +274,22 @@ export default function MathPracticePage() {
 
     return () => window.clearTimeout(timeout)
   }, [activeQuestionId, isKeypadVisible])
+
+  if (questions.length === 0) {
+    return (
+      <div className="py-10 text-center">
+        <div className="text-5xl">🎉</div>
+        <h2 className="mt-3 text-xl font-bold text-gray-800">现在没有数学错题</h2>
+        <button
+          type="button"
+          onClick={() => navigate('/math/wrong-book')}
+          className="mt-5 rounded-xl bg-primary px-6 py-3 font-bold text-white"
+        >
+          返回数学错题本
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className={isKeypadVisible ? 'pb-40' : 'pb-6'}>
@@ -357,6 +432,9 @@ export default function MathPracticePage() {
             <h3 className="mt-3 text-lg font-bold text-gray-800">还有题目没做完</h3>
             <p className="mt-2 text-sm leading-6 text-gray-500">
               还有 {questions.length - answeredCount} 题未作答，现在交卷会按错题计算。
+              {mode === 'quick' && !qualifiesForDailyCompletion
+                ? ` 至少完成 ${minimumAnsweredCount} 题才会计入今日任务。`
+                : ''}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
@@ -426,4 +504,9 @@ export default function MathPracticePage() {
       )}
     </div>
   )
+}
+
+export default function MathPracticePage() {
+  const location = useLocation()
+  return <MathPracticeSession key={location.search} />
 }

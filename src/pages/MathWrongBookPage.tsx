@@ -16,13 +16,7 @@ export default function MathWrongBookPage() {
   const handleRetry = () => {
     if (progress.wrongQuestions.length === 0) return
 
-    navigate('/math/practice', {
-      state: {
-        mode: 'review',
-        title: '错题重练',
-        reviewQuestions: progress.wrongQuestions.map(item => item.question),
-      },
-    })
+    navigate('/math/practice?mode=review')
   }
 
   return (

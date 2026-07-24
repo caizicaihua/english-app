@@ -8,6 +8,7 @@ import {
   normalizeMathProgressData,
   normalizeProgressData,
   normalizeSettingsData,
+  markWordLearned,
   recordStudyActivity,
   saveMathAttempt,
   updateStreak,
@@ -25,6 +26,7 @@ function createProgress(overrides: Partial<ProgressData> = {}): ProgressData {
     learnedWords: [],
     wrongWords: [],
     dailyWords: {},
+    dailyWordIds: {},
     streak: 0,
     lastStudyDate: '',
     achievements: [],
@@ -79,7 +81,19 @@ describe('local study dates', () => {
     expect(afterPractice.dailyWords).toEqual({})
     expect(afterPractice.streak).toBe(1)
     expect(afterWord.dailyWords).toEqual({ '2026-07-24': 1 })
+    expect(afterWord.dailyWordIds).toEqual({})
     expect(progress.dailyWords).toEqual({})
+  })
+
+  it('records the exact id for a newly learned word', () => {
+    const afterWord = markWordLearned(
+      createProgress(),
+      '1-1-1',
+      new Date(2026, 6, 24, 9),
+    )
+
+    expect(afterWord.dailyWords).toEqual({ '2026-07-24': 1 })
+    expect(afterWord.dailyWordIds).toEqual({ '2026-07-24': ['1-1-1'] })
   })
 })
 
@@ -101,6 +115,7 @@ describe('storage migrations', () => {
     expect(first.wordMastery['1-1-1'].level).toBe(2)
     expect(first.wordMastery['1-1-2'].level).toBe(1)
     expect(first.wordMastery['1-1-3'].level).toBe(1)
+    expect(first.dailyWordIds).toEqual({})
     expect(repeated).toEqual(first)
   })
 
@@ -111,6 +126,10 @@ describe('storage migrations', () => {
       learnedWords: ['1-1-1', null, '1-1-1'],
       wrongWords: [],
       dailyWords: { '2026-07-24': 2, broken: -1 },
+      dailyWordIds: {
+        '2026-07-24': ['1-1-1', '1-1-1', null],
+        broken: ['1-1-2'],
+      },
       streak: 'many',
       lastStudyDate: 'not-a-date',
       achievements: ['first_word'],
@@ -134,6 +153,7 @@ describe('storage migrations', () => {
     expect(progress.completedUnits).toEqual({ '1-1': 3 })
     expect(progress.learnedWords).toEqual(['1-1-1'])
     expect(progress.dailyWords).toEqual({ '2026-07-24': 2 })
+    expect(progress.dailyWordIds).toEqual({ '2026-07-24': ['1-1-1'] })
     expect(progress.streak).toBe(0)
     expect(progress.lastStudyDate).toBe('')
     expect(progress.wordMastery['1-1-1']).toMatchObject({

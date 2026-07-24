@@ -1,24 +1,26 @@
+import { lazy, Suspense } from 'react'
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 import Layout from './components/Layout'
-import HomePage from './pages/HomePage'
-import GradePage from './pages/GradePage'
-import LearnPage from './pages/LearnPage'
-import QuizPage from './pages/QuizPage'
-import WrongBookPage from './pages/WrongBookPage'
-import StatsPage from './pages/StatsPage'
-import AchievementsPage from './pages/AchievementsPage'
-import SettingsPage from './pages/SettingsPage'
-import MathHomePage from './pages/MathHomePage'
-import MathPracticePage from './pages/MathPracticePage'
-import MathResultPage from './pages/MathResultPage'
-import MathWrongBookPage from './pages/MathWrongBookPage'
-import BridgeHomePage from './pages/BridgeHomePage'
-import BridgeSetupPage from './pages/BridgeSetupPage'
-import TodayPlanPage from './pages/TodayPlanPage'
-import DiagnosticPage from './pages/DiagnosticPage'
-import DiagnosticResultPage from './pages/DiagnosticResultPage'
-import ReviewQueuePage from './pages/ReviewQueuePage'
-import ParentReportPage from './pages/ParentReportPage'
+
+const HomePage = lazy(() => import('./pages/HomePage'))
+const GradePage = lazy(() => import('./pages/GradePage'))
+const LearnPage = lazy(() => import('./pages/LearnPage'))
+const QuizPage = lazy(() => import('./pages/QuizPage'))
+const WrongBookPage = lazy(() => import('./pages/WrongBookPage'))
+const StatsPage = lazy(() => import('./pages/StatsPage'))
+const AchievementsPage = lazy(() => import('./pages/AchievementsPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const MathHomePage = lazy(() => import('./pages/MathHomePage'))
+const MathPracticePage = lazy(() => import('./pages/MathPracticePage'))
+const MathResultPage = lazy(() => import('./pages/MathResultPage'))
+const MathWrongBookPage = lazy(() => import('./pages/MathWrongBookPage'))
+const BridgeHomePage = lazy(() => import('./pages/BridgeHomePage'))
+const BridgeSetupPage = lazy(() => import('./pages/BridgeSetupPage'))
+const TodayPlanPage = lazy(() => import('./pages/TodayPlanPage'))
+const DiagnosticPage = lazy(() => import('./pages/DiagnosticPage'))
+const DiagnosticResultPage = lazy(() => import('./pages/DiagnosticResultPage'))
+const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
+const ParentReportPage = lazy(() => import('./pages/ParentReportPage'))
 
 const router = createHashRouter([
   {
@@ -41,6 +43,8 @@ const router = createHashRouter([
       { path: 'bridge', element: <BridgeHomePage /> },
       { path: 'bridge/setup', element: <BridgeSetupPage /> },
       { path: 'bridge/today', element: <TodayPlanPage /> },
+      { path: 'bridge/new-words', element: <LearnPage practiceMode="daily-new" /> },
+      { path: 'bridge/daily-quiz', element: <QuizPage practiceMode="daily-quiz" /> },
       { path: 'bridge/diagnostic', element: <DiagnosticPage /> },
       { path: 'bridge/diagnostic/result', element: <DiagnosticResultPage /> },
       { path: 'bridge/review', element: <ReviewQueuePage mode="review" /> },
@@ -53,5 +57,9 @@ const router = createHashRouter([
 ])
 
 export default function App() {
-  return <RouterProvider router={router} />
+  return (
+    <Suspense fallback={<div className="py-10 text-center text-gray-400">加载中...</div>}>
+      <RouterProvider router={router} />
+    </Suspense>
+  )
 }

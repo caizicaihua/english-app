@@ -116,7 +116,7 @@ export default function ParentReportPage() {
       </section>
 
       <section className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="font-bold text-gray-800">最需要关注</h3>
+        <h3 className="font-bold text-gray-800">当前最需要关注</h3>
         {report.concerns.length === 0 ? (
           <div className="mt-3 rounded-xl bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
             当前没有突出的薄弱单元，按到期任务继续复习即可。

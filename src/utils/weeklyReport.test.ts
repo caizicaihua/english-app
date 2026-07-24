@@ -174,4 +174,32 @@ describe('weekly parent report', () => {
     expect(report.mathAttemptCount).toBe(0)
     expect(report.hasActivity).toBe(false)
   })
+
+  it('deduplicates explicit word ids while preserving legacy daily counts', () => {
+    const tuesday = new Date(2026, 6, 21, 9)
+    const wednesday = new Date(2026, 6, 22, 9)
+    const report = buildWeeklyReport(
+      createProgress({
+        dailyWords: {
+          '2026-07-21': 2,
+          '2026-07-22': 1,
+        },
+        dailyWordIds: {
+          '2026-07-22': ['2-1-1'],
+        },
+        wordMastery: {
+          '2-1-1': createWordState(1, {
+            firstSeenAt: wednesday.toISOString(),
+          }),
+          '1-1-1': createWordState(1, {
+            firstSeenAt: tuesday.toISOString(),
+          }),
+        },
+      }),
+      createMathProgress(),
+      friday,
+    )
+
+    expect(report.newWordCount).toBe(4)
+  })
 })

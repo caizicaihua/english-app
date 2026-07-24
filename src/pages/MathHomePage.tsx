@@ -58,12 +58,7 @@ export default function MathHomePage() {
 
         <button
           type="button"
-          onClick={() => navigate('/math/practice', {
-            state: {
-              mode: 'quick',
-              title: mathQuickConfig.title,
-            },
-          })}
+          onClick={() => navigate('/math/practice?mode=quick')}
           className="mt-5 w-full rounded-xl bg-white py-3.5 font-bold text-indigo-600 shadow-sm active:scale-[0.98]"
         >
           开始 20 题快速练
@@ -112,12 +107,7 @@ export default function MathHomePage() {
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => navigate('/math/practice', {
-              state: {
-                mode: 'paper',
-                title: mathPaperConfig.title,
-              },
-            })}
+            onClick={() => navigate('/math/practice?mode=paper')}
             className="rounded-xl bg-primary py-3.5 font-bold text-white active:scale-95"
           >
             开始 100 题

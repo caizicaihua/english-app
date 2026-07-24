@@ -3,7 +3,10 @@ import {
   updateWordMastery,
   type ProgressData,
 } from './storage'
-import { recordUnitVerification } from './studyPlan'
+import {
+  recordUnitFollowUpAnswer,
+  recordUnitVerification,
+} from './studyPlan'
 
 export type QuizProgressSource = 'quiz' | 'review' | 'unit_verification'
 
@@ -43,15 +46,18 @@ export function applyQuizAnswer(params: {
     params.wrongWordIds,
   )
 
-  return results.reduce((progress, result) => (
-    params.source === 'unit_verification'
-      ? recordUnitVerification(progress, result.wordId, result.isCorrect, answeredAt)
-      : updateWordMastery(
-        progress,
-        result.wordId,
-        result.isCorrect,
-        params.source,
-        answeredAt,
-      )
-  ), params.progress)
+  return results.reduce((progress, result) => {
+    if (params.source === 'unit_verification') {
+      return recordUnitVerification(progress, result.wordId, result.isCorrect, answeredAt)
+    }
+
+    const updated = updateWordMastery(
+      progress,
+      result.wordId,
+      result.isCorrect,
+      params.source,
+      answeredAt,
+    )
+    return recordUnitFollowUpAnswer(updated, result.wordId, result.isCorrect, answeredAt)
+  }, params.progress)
 }

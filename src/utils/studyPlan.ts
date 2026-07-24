@@ -241,6 +241,7 @@ export function buildDailyStudyPlan(
     reinforcementWordIds,
     reinforcementCount,
   )
+  const hasEnglishContent = reinforcementCount + newWordIds.length > 0
 
   return {
     date: dateKey,
@@ -249,11 +250,40 @@ export function buildDailyStudyPlan(
     verificationWordIds,
     newWordIds,
     includeDiagnostic: false,
-    quizQuestionCount: settings.dailyMinutes === 10 ? 5 : 10,
+    quizQuestionCount: hasEnglishContent
+      ? settings.dailyMinutes === 10 ? 5 : 10
+      : 0,
     includeMath: shouldIncludeMath(date, settings),
     completedTaskIds: [],
     generatedAt: date.toISOString(),
   }
+}
+
+export function getDailyQuizWordIds(plan: DailyStudyPlan): string[] {
+  const wordPool: string[] = []
+  const seen = new Set<string>()
+  const queues = [
+    plan.newWordIds,
+    plan.reviewWordIds,
+    plan.verificationWordIds,
+  ]
+  const maxQueueLength = Math.max(0, ...queues.map(queue => queue.length))
+
+  for (let index = 0; index < maxQueueLength; index += 1) {
+    for (const queue of queues) {
+      const wordId = queue[index]
+      if (!wordId || seen.has(wordId)) continue
+      seen.add(wordId)
+      wordPool.push(wordId)
+    }
+  }
+
+  if (wordPool.length === 0 || plan.quizQuestionCount <= 0) return []
+
+  return Array.from(
+    { length: plan.quizQuestionCount },
+    (_, index) => wordPool[index % wordPool.length],
+  )
 }
 
 export function getDailyTaskIds(plan: DailyStudyPlan): DailyTaskId[] {
@@ -350,9 +380,18 @@ export function recordUnitVerification(
     date,
   )
 
+  return recordUnitFollowUpAnswer(updated, wordId, isCorrect, date)
+}
+
+export function recordUnitFollowUpAnswer(
+  progress: ProgressData,
+  wordId: string,
+  isCorrect: boolean,
+  date = new Date(),
+): ProgressData {
   return {
-    ...updated,
-    unitFollowUpPlans: updated.unitFollowUpPlans.map(plan => (
+    ...progress,
+    unitFollowUpPlans: progress.unitFollowUpPlans.map(plan => (
       plan.pendingWordIds.includes(wordId)
         ? recordUnitFollowUpResult({
           plan,

@@ -8,6 +8,7 @@ import {
 import {
   buildDailyStudyPlan,
   getActiveDailyQueueWordIds,
+  getDailyQuizWordIds,
   getOrCreateDailyStudyPlan,
   recordUnitVerification,
   saveDailyStudyPlan,
@@ -178,6 +179,31 @@ describe('daily study plan', () => {
     expect(plan.quizQuestionCount).toBe(0)
     expect(plan.newWordIds).toEqual([])
     expect(plan.includeMath).toBe(false)
+  })
+
+  it('builds the exact daily quiz count only from words in today plan', () => {
+    const plan = {
+      ...buildDailyStudyPlan(createProgress(), createSettings(), date),
+      newWordIds: ['2-1-1', '2-1-2'],
+      reviewWordIds: ['1-1-1'],
+      verificationWordIds: ['1-2-1'],
+      quizQuestionCount: 5,
+    }
+    const wordIds = getDailyQuizWordIds(plan)
+
+    expect(wordIds).toHaveLength(5)
+    expect(new Set(wordIds)).toEqual(new Set([
+      '2-1-1',
+      '2-1-2',
+      '1-1-1',
+      '1-2-1',
+    ]))
+    expect(getDailyQuizWordIds({
+      ...plan,
+      newWordIds: [],
+      reviewWordIds: [],
+      verificationWordIds: [],
+    })).toEqual([])
   })
 
   it('updates mastery and expands a low-accuracy verification plan', () => {

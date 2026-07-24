@@ -1,4 +1,4 @@
-export const PROGRESS_SCHEMA_VERSION = 2
+export const PROGRESS_SCHEMA_VERSION = 3
 export const SETTINGS_SCHEMA_VERSION = 1
 
 export type MasteryLevel = 0 | 1 | 2 | 3 | 4
