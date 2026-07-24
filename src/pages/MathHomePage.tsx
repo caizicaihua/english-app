@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { mathPaperConfig } from '../data/math'
-import { loadMathProgress } from '../utils/storage'
+import { getMathModeProgress, loadMathProgress } from '../utils/storage'
 
 export default function MathHomePage() {
   const navigate = useNavigate()
   const progress = loadMathProgress()
+  const paperProgress = getMathModeProgress(progress, 'paper')
 
   return (
     <div>
@@ -35,12 +36,12 @@ export default function MathHomePage() {
         <div className="grid grid-cols-3 gap-3 mt-4">
           <div className="rounded-xl bg-indigo-50 p-3 text-center">
             <div className="text-xs text-gray-500">历史最高</div>
-            <div className="text-2xl font-bold text-indigo-600 mt-1">{progress.bestScore}</div>
+            <div className="text-2xl font-bold text-indigo-600 mt-1">{paperProgress.bestScore}</div>
           </div>
           <div className="rounded-xl bg-emerald-50 p-3 text-center">
             <div className="text-xs text-gray-500">最近成绩</div>
             <div className="text-2xl font-bold text-emerald-600 mt-1">
-              {progress.lastAttempt?.score ?? '--'}
+              {paperProgress.lastAttempt?.score ?? '--'}
             </div>
           </div>
           <div className="rounded-xl bg-amber-50 p-3 text-center">

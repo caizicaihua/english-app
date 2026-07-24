@@ -1,12 +1,18 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { gradeCatalog, getTotalWords } from '../data/words'
-import { getActiveStreak, loadMathProgress, loadProgress } from '../utils/storage'
+import {
+  getActiveStreak,
+  getMathModeProgress,
+  loadMathProgress,
+  loadProgress,
+} from '../utils/storage'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const progress = loadProgress()
   const mathProgress = loadMathProgress()
+  const mathPaperProgress = getMathModeProgress(mathProgress, 'paper')
   const activeStreak = getActiveStreak(progress)
 
   return (
@@ -31,7 +37,7 @@ export default function HomePage() {
             <div className="text-xs text-gray-400 mt-1">100 题 · 15 分钟 · 口算训练</div>
           </div>
           <div className="text-right text-xs text-gray-500">
-            <div>历史最高 {mathProgress.bestScore}</div>
+            <div>历史最高 {mathPaperProgress.bestScore}</div>
             <div className="mt-1">错题 {mathProgress.wrongQuestions.length} 题</div>
           </div>
         </div>

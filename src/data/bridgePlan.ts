@@ -1,0 +1,105 @@
+export const PROGRESS_SCHEMA_VERSION = 2
+export const SETTINGS_SCHEMA_VERSION = 1
+
+export type MasteryLevel = 0 | 1 | 2 | 3 | 4
+
+export type WordLearningSource =
+  | 'learn'
+  | 'quiz'
+  | 'review'
+  | 'diagnostic'
+  | 'unit_verification'
+
+export interface WordPrioritySignals {
+  legacyWrong?: boolean
+  lastWrongAt?: string
+  lastDiagnosticWeakAt?: string
+}
+
+export interface WordLearningState {
+  level: MasteryLevel
+  correctStreak: number
+  wrongCount: number
+  lastReviewedAt?: string
+  nextReviewDate?: string
+  lastCountedCorrectDate?: string
+  prioritySignals: WordPrioritySignals
+}
+
+export interface UnitFollowUpPlan {
+  unitKey: string
+  sourceDiagnosticId: string
+  reason: 'review' | 'focus'
+  pendingWordIds: string[]
+  assessedWordIds: string[]
+  correctCount: number
+  createdAt: string
+  completedAt?: string
+}
+
+export interface BridgePlanSettings {
+  enabled: boolean
+  startDate: string
+  studyDaysPerWeek: 3 | 4 | 5
+  dailyMinutes: 10 | 15 | 20
+  focus: 'balanced' | 'english' | 'math'
+  previewGrade2: boolean
+}
+
+export type DiagnosticQuestionType = 'zh2en' | 'listen' | 'spell'
+
+export interface DiagnosticResponse {
+  wordId: string
+  unitKey: string
+  questionType: DiagnosticQuestionType
+  isCorrect: boolean
+  answeredAt: string
+}
+
+export interface DiagnosticUnitResult {
+  score: number
+  status: 'mastered' | 'review' | 'focus'
+  sampledWordIds: string[]
+}
+
+export interface DiagnosticResult {
+  id: string
+  startedAt: string
+  completedAt: string
+  unitResults: Record<string, DiagnosticUnitResult>
+  weakWordIds: string[]
+  responses: DiagnosticResponse[]
+}
+
+export interface DiagnosticDraft {
+  id: string
+  startedAt: string
+  currentSection: number
+  responses: DiagnosticResponse[]
+}
+
+export type StudyTaskType =
+  | 'review'
+  | 'verification'
+  | 'new_words'
+  | 'quiz'
+  | 'diagnostic'
+  | 'math'
+
+export interface StudySession {
+  id: string
+  date: string
+  taskType: StudyTaskType
+  itemCount: number
+  correctCount: number
+  durationSeconds: number
+}
+
+export const defaultBridgePlanSettings: BridgePlanSettings = {
+  enabled: false,
+  startDate: '',
+  studyDaysPerWeek: 5,
+  dailyMinutes: 15,
+  focus: 'balanced',
+  previewGrade2: true,
+}
