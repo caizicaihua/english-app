@@ -1399,7 +1399,7 @@ export const grade4: Grade = {
           "zh": "森林",
           "emoji": "🌲",
           "example": {
-            "en": "This is forest.",
+            "en": "This is a forest.",
             "zh": "这是森林。"
           }
         },
@@ -1409,7 +1409,7 @@ export const grade4: Grade = {
           "zh": "沙漠",
           "emoji": "🏜️",
           "example": {
-            "en": "This is desert.",
+            "en": "This is a desert.",
             "zh": "这是沙漠。"
           }
         },
@@ -1419,7 +1419,7 @@ export const grade4: Grade = {
           "zh": "岛屿",
           "emoji": "🏝️",
           "example": {
-            "en": "This is island.",
+            "en": "This is an island.",
             "zh": "这是岛屿。"
           }
         },
@@ -1429,7 +1429,7 @@ export const grade4: Grade = {
           "zh": "田野",
           "emoji": "🌾",
           "example": {
-            "en": "This is field.",
+            "en": "This is a field.",
             "zh": "这是田野。"
           }
         },
@@ -1439,7 +1439,7 @@ export const grade4: Grade = {
           "zh": "湖",
           "emoji": "🏞️",
           "example": {
-            "en": "This is lake.",
+            "en": "This is a lake.",
             "zh": "这是湖。"
           }
         },
@@ -1449,7 +1449,7 @@ export const grade4: Grade = {
           "zh": "海",
           "emoji": "🌊",
           "example": {
-            "en": "This is sea.",
+            "en": "This is the sea.",
             "zh": "这是海。"
           }
         },
@@ -1459,7 +1459,7 @@ export const grade4: Grade = {
           "zh": "海滩",
           "emoji": "🏖️",
           "example": {
-            "en": "This is beach.",
+            "en": "This is a beach.",
             "zh": "这是海滩。"
           }
         },
@@ -1469,7 +1469,7 @@ export const grade4: Grade = {
           "zh": "国家",
           "emoji": "🌍",
           "example": {
-            "en": "This is country.",
+            "en": "This is a country.",
             "zh": "这是国家。"
           }
         },
@@ -1479,7 +1479,7 @@ export const grade4: Grade = {
           "zh": "城市",
           "emoji": "🏙️",
           "example": {
-            "en": "This is city.",
+            "en": "This is a city.",
             "zh": "这是城市。"
           }
         },
@@ -1489,7 +1489,7 @@ export const grade4: Grade = {
           "zh": "村庄",
           "emoji": "🏡",
           "example": {
-            "en": "This is village.",
+            "en": "This is a village.",
             "zh": "这是村庄。"
           }
         },
@@ -1499,7 +1499,7 @@ export const grade4: Grade = {
           "zh": "北方",
           "emoji": "⬆️",
           "example": {
-            "en": "This is north.",
+            "en": "North is this way.",
             "zh": "这是北方。"
           }
         },
@@ -1509,7 +1509,7 @@ export const grade4: Grade = {
           "zh": "南方",
           "emoji": "⬇️",
           "example": {
-            "en": "This is south.",
+            "en": "South is this way.",
             "zh": "这是南方。"
           }
         },
@@ -1519,7 +1519,7 @@ export const grade4: Grade = {
           "zh": "东方",
           "emoji": "➡️",
           "example": {
-            "en": "This is east.",
+            "en": "East is this way.",
             "zh": "这是东方。"
           }
         },
@@ -1529,7 +1529,7 @@ export const grade4: Grade = {
           "zh": "西方",
           "emoji": "⬅️",
           "example": {
-            "en": "This is west.",
+            "en": "West is this way.",
             "zh": "这是西方。"
           }
         },
@@ -1539,7 +1539,7 @@ export const grade4: Grade = {
           "zh": "山谷",
           "emoji": "🏞️",
           "example": {
-            "en": "This is valley.",
+            "en": "This is a valley.",
             "zh": "这是山谷。"
           }
         },
@@ -1549,7 +1549,7 @@ export const grade4: Grade = {
           "zh": "瀑布",
           "emoji": "💦",
           "example": {
-            "en": "This is waterfall.",
+            "en": "This is a waterfall.",
             "zh": "这是瀑布。"
           }
         }
@@ -1593,7 +1593,7 @@ export const grade4: Grade = {
           "zh": "电脑",
           "emoji": "💻",
           "example": {
-            "en": "This is computer.",
+            "en": "This is a computer.",
             "zh": "这是电脑。"
           }
         },
@@ -1603,7 +1603,7 @@ export const grade4: Grade = {
           "zh": "屏幕",
           "emoji": "🖥️",
           "example": {
-            "en": "This is screen.",
+            "en": "This is a screen.",
             "zh": "这是屏幕。"
           }
         },
@@ -1613,7 +1613,7 @@ export const grade4: Grade = {
           "zh": "键盘",
           "emoji": "⌨️",
           "example": {
-            "en": "This is keyboard.",
+            "en": "This is a keyboard.",
             "zh": "这是键盘。"
           }
         },
@@ -1633,7 +1633,7 @@ export const grade4: Grade = {
           "zh": "平板",
           "emoji": "📱",
           "example": {
-            "en": "This is tablet.",
+            "en": "This is a tablet.",
             "zh": "这是平板。"
           }
         },
@@ -1643,7 +1643,7 @@ export const grade4: Grade = {
           "zh": "相机",
           "emoji": "📷",
           "example": {
-            "en": "This is camera.",
+            "en": "This is a camera.",
             "zh": "这是相机。"
           }
         },
@@ -1653,7 +1653,7 @@ export const grade4: Grade = {
           "zh": "收音机",
           "emoji": "📻",
           "example": {
-            "en": "This is radio.",
+            "en": "This is a radio.",
             "zh": "这是收音机。"
           }
         },
@@ -1663,7 +1663,7 @@ export const grade4: Grade = {
           "zh": "电视",
           "emoji": "📺",
           "example": {
-            "en": "This is television.",
+            "en": "This is a television.",
             "zh": "这是电视。"
           }
         },
@@ -1673,7 +1673,7 @@ export const grade4: Grade = {
           "zh": "互联网",
           "emoji": "🌐",
           "example": {
-            "en": "This is internet.",
+            "en": "This is the internet.",
             "zh": "这是互联网。"
           }
         },
@@ -1683,7 +1683,7 @@ export const grade4: Grade = {
           "zh": "网站",
           "emoji": "🕸️",
           "example": {
-            "en": "This is website.",
+            "en": "This is a website.",
             "zh": "这是网站。"
           }
         },
@@ -1693,7 +1693,7 @@ export const grade4: Grade = {
           "zh": "电子邮件",
           "emoji": "📧",
           "example": {
-            "en": "This is email.",
+            "en": "This is an email.",
             "zh": "这是电子邮件。"
           }
         },
@@ -1703,7 +1703,7 @@ export const grade4: Grade = {
           "zh": "消息",
           "emoji": "💬",
           "example": {
-            "en": "This is message.",
+            "en": "This is a message.",
             "zh": "这是消息。"
           }
         },
@@ -1713,7 +1713,7 @@ export const grade4: Grade = {
           "zh": "视频",
           "emoji": "🎥",
           "example": {
-            "en": "This is video.",
+            "en": "This is a video.",
             "zh": "这是视频。"
           }
         },
@@ -1723,7 +1723,7 @@ export const grade4: Grade = {
           "zh": "图片",
           "emoji": "🖼️",
           "example": {
-            "en": "This is picture.",
+            "en": "This is a picture.",
             "zh": "这是图片。"
           }
         },
@@ -1733,7 +1733,7 @@ export const grade4: Grade = {
           "zh": "音箱",
           "emoji": "🔊",
           "example": {
-            "en": "This is speaker.",
+            "en": "This is a speaker.",
             "zh": "这是音箱。"
           }
         },
@@ -1743,7 +1743,7 @@ export const grade4: Grade = {
           "zh": "打印机",
           "emoji": "🖨️",
           "example": {
-            "en": "This is printer.",
+            "en": "This is a printer.",
             "zh": "这是打印机。"
           }
         }
@@ -1997,4 +1997,3 @@ export const grade4: Grade = {
     }
   ]
 }
-

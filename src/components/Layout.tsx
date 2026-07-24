@@ -47,6 +47,7 @@ export default function Layout() {
         <div className="max-w-lg mx-auto flex justify-around py-2">
           {navItems.map(item => {
             const isActive = location.pathname === item.path
+              || (item.path !== '/' && location.pathname.startsWith(`${item.path}/`))
             return (
               <button
                 key={item.path}

@@ -1,19 +1,20 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { gradeCatalog, getTotalWords } from '../data/words'
-import { loadMathProgress, loadProgress } from '../utils/storage'
+import { getActiveStreak, loadMathProgress, loadProgress } from '../utils/storage'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const progress = loadProgress()
   const mathProgress = loadMathProgress()
+  const activeStreak = getActiveStreak(progress)
 
   return (
     <div>
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">选择学习内容</h2>
         <p className="text-gray-500 text-sm mt-1">
-          已学 {progress.learnedWords.length} 个单词 | 连续 {progress.streak} 天
+          已学 {progress.learnedWords.length} 个单词 | 连续 {activeStreak} 天
         </p>
       </div>
 

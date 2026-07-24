@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { loadWordsByIds, type Word } from '../data/words'
 import { loadProgress, saveProgress, removeWrongWord } from '../utils/storage'
 import { speak } from '../utils/speech'
 
 export default function WrongBookPage() {
+  const navigate = useNavigate()
   const [progress, setProgress] = useState(loadProgress)
   const [wrongWords, setWrongWords] = useState<Word[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +40,15 @@ export default function WrongBookPage() {
           {wrongWords.length} 个待复习单词
         </p>
       </div>
+
+      {!loading && wrongWords.length > 0 && (
+        <button
+          onClick={() => navigate('/wrong-book/quiz')}
+          className="w-full mb-4 py-3 rounded-xl bg-primary text-white font-bold shadow-sm active:scale-[0.98] transition-transform"
+        >
+          🎯 错题重练
+        </button>
+      )}
 
       {loading ? (
         <div className="text-center py-10 text-gray-400">加载中...</div>

@@ -414,7 +414,7 @@ export const grade5: Grade = {
           "zh": "剧院",
           "emoji": "🎭",
           "example": {
-            "en": "This is theater.",
+            "en": "This is a theater.",
             "zh": "这是剧院。"
           }
         },
@@ -494,7 +494,7 @@ export const grade5: Grade = {
           "zh": "工厂",
           "emoji": "🏭",
           "example": {
-            "en": "This is factory.",
+            "en": "This is a factory.",
             "zh": "这是工厂。"
           }
         },
@@ -554,7 +554,7 @@ export const grade5: Grade = {
           "zh": "塔",
           "emoji": "🗼",
           "example": {
-            "en": "This is tower.",
+            "en": "This is a tower.",
             "zh": "这是塔。"
           }
         }
@@ -2181,4 +2181,3 @@ export const grade5: Grade = {
     }
   ]
 }
-

@@ -1,73 +1,60 @@
-# React + TypeScript + Vite
+# 小学学习
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+面向小学阶段学生的英语与数学练习应用。项目为纯前端单页应用，学习进度、错题和设置保存在浏览器 `localStorage` 中，无需后端服务。
 
-Currently, two official plugins are available:
+## 主要功能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 小学一至六年级英语词库、例句和情景对话
+- 单词卡片、浏览器语音朗读和多档语速
+- 选择、听力、拼写、配对、例句和对话闯关
+- 关卡解锁、星级、学习统计、成就和英语错题重练
+- 一年级百以内口算、倒计时、成绩单和数学错题重练
+- 移动端优先布局，支持静态站点部署
 
-## React Compiler
+## 技术栈
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19
+- TypeScript 5
+- Vite 8
+- React Router 7
+- Tailwind CSS 4
+- Framer Motion
+- Vitest
 
-## Expanding the ESLint configuration
+## 本地开发
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+开发服务器默认监听 `0.0.0.0`，终端会显示本机访问地址。
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 质量检查
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm test
+npm run lint
+npm run build
 ```
+
+自动化测试覆盖学习日期与连续天数、英语题目生成、数学题目范围，以及词库目录和 ID 一致性。
+
+## 构建与部署
+
+```bash
+npm run build
+npm run preview
+```
+
+生产文件输出到 `dist/`。应用使用 Hash Router，可直接部署到 Nginx、GitHub Pages、Netlify、Vercel 等静态托管服务。
+
+## 数据说明
+
+- 英语进度：`english_app_data`
+- 数学进度：`english_app_math_data`
+- 朗读设置：`english_app_settings`
+
+修改 `src/utils/storage.ts` 时应尽量保持已有本地数据向后兼容。词库源数据位于 `src/data/grades/`，轻量目录位于 `src/data/gradeCatalog.ts`，两者的一致性由测试校验。
+
+暑假衔接功能的迭代范围、数据模型和验收标准见 [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md)。

@@ -88,24 +88,50 @@ export function saveMathProgress(data: MathProgressData) {
   localStorage.setItem(MATH_STORAGE_KEY, JSON.stringify(data))
 }
 
-export function updateStreak(data: ProgressData): ProgressData {
-  const today = new Date().toISOString().slice(0, 10)
+export function getLocalDateKey(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export function updateStreak(data: ProgressData, date = new Date()): ProgressData {
+  const today = getLocalDateKey(date)
   if (data.lastStudyDate === today) return data
 
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const yesterdayDate = new Date(date)
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+  const yesterday = getLocalDateKey(yesterdayDate)
   const newStreak = data.lastStudyDate === yesterday ? data.streak + 1 : 1
 
   return { ...data, streak: newStreak, lastStudyDate: today }
 }
 
-export function addDailyWord(data: ProgressData): ProgressData {
-  const today = new Date().toISOString().slice(0, 10)
-  const updated = updateStreak(data)
-  updated.dailyWords = {
-    ...updated.dailyWords,
-    [today]: (updated.dailyWords[today] || 0) + 1,
+export function getActiveStreak(data: ProgressData, date = new Date()): number {
+  if (!data.lastStudyDate) return 0
+
+  const today = getLocalDateKey(date)
+  if (data.lastStudyDate === today) return data.streak
+
+  const yesterdayDate = new Date(date)
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+  return data.lastStudyDate === getLocalDateKey(yesterdayDate) ? data.streak : 0
+}
+
+export function recordStudyActivity(data: ProgressData, date = new Date()): ProgressData {
+  return updateStreak(data, date)
+}
+
+export function addDailyWord(data: ProgressData, date = new Date()): ProgressData {
+  const today = getLocalDateKey(date)
+  const updated = updateStreak(data, date)
+  return {
+    ...updated,
+    dailyWords: {
+      ...updated.dailyWords,
+      [today]: (updated.dailyWords[today] || 0) + 1,
+    },
   }
-  return updated
 }
 
 export function markWordLearned(data: ProgressData, wordId: string): ProgressData {

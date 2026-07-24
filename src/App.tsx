@@ -23,6 +23,7 @@ const router = createHashRouter([
       { path: 'grade/:gradeId/unit/:unitId', element: <LearnPage /> },
       { path: 'grade/:gradeId/quiz/:unitId', element: <QuizPage /> },
       { path: 'wrong-book', element: <WrongBookPage /> },
+      { path: 'wrong-book/quiz', element: <QuizPage reviewMode /> },
       { path: 'stats', element: <StatsPage /> },
       { path: 'achievements', element: <AchievementsPage /> },
       { path: 'settings', element: <SettingsPage /> },

@@ -538,7 +538,7 @@ export const grade3: Grade = {
           "zh": "父母",
           "emoji": "👪",
           "example": {
-            "en": "This is parent.",
+            "en": "This is a parent.",
             "zh": "这是父母。"
           }
         },
@@ -548,7 +548,7 @@ export const grade3: Grade = {
           "zh": "镜子",
           "emoji": "🪞",
           "example": {
-            "en": "This is mirror.",
+            "en": "This is a mirror.",
             "zh": "这是镜子。"
           }
         },
@@ -558,7 +558,7 @@ export const grade3: Grade = {
           "zh": "毯子",
           "emoji": "🛏️",
           "example": {
-            "en": "This is blanket.",
+            "en": "This is a blanket.",
             "zh": "这是毯子。"
           }
         },
@@ -568,7 +568,7 @@ export const grade3: Grade = {
           "zh": "枕头",
           "emoji": "🛌",
           "example": {
-            "en": "This is pillow.",
+            "en": "This is a pillow.",
             "zh": "这是枕头。"
           }
         },
@@ -578,7 +578,7 @@ export const grade3: Grade = {
           "zh": "肥皂",
           "emoji": "🧼",
           "example": {
-            "en": "This is soap.",
+            "en": "This is some soap.",
             "zh": "这是肥皂。"
           }
         },
@@ -588,7 +588,7 @@ export const grade3: Grade = {
           "zh": "毛巾",
           "emoji": "🧻",
           "example": {
-            "en": "This is towel.",
+            "en": "This is a towel.",
             "zh": "这是毛巾。"
           }
         },
@@ -598,7 +598,7 @@ export const grade3: Grade = {
           "zh": "刷子",
           "emoji": "🪥",
           "example": {
-            "en": "This is brush.",
+            "en": "This is a brush.",
             "zh": "这是刷子。"
           }
         },
@@ -608,7 +608,7 @@ export const grade3: Grade = {
           "zh": "电话",
           "emoji": "📞",
           "example": {
-            "en": "This is phone.",
+            "en": "This is a phone.",
             "zh": "这是电话。"
           }
         },
@@ -618,7 +618,7 @@ export const grade3: Grade = {
           "zh": "照片",
           "emoji": "🖼️",
           "example": {
-            "en": "This is photo.",
+            "en": "This is a photo.",
             "zh": "这是照片。"
           }
         },
@@ -628,7 +628,7 @@ export const grade3: Grade = {
           "zh": "抽屉",
           "emoji": "🗄️",
           "example": {
-            "en": "This is drawer.",
+            "en": "This is a drawer.",
             "zh": "这是抽屉。"
           }
         },
@@ -638,7 +638,7 @@ export const grade3: Grade = {
           "zh": "阳台",
           "emoji": "🏠",
           "example": {
-            "en": "This is balcony.",
+            "en": "This is a balcony.",
             "zh": "这是阳台。"
           }
         },
@@ -648,7 +648,7 @@ export const grade3: Grade = {
           "zh": "栅栏",
           "emoji": "🪵",
           "example": {
-            "en": "This is fence.",
+            "en": "This is a fence.",
             "zh": "这是栅栏。"
           }
         },
@@ -658,7 +658,7 @@ export const grade3: Grade = {
           "zh": "大门",
           "emoji": "🚧",
           "example": {
-            "en": "This is gate.",
+            "en": "This is a gate.",
             "zh": "这是大门。"
           }
         }
@@ -896,7 +896,7 @@ export const grade3: Grade = {
           "zh": "鸡肉",
           "emoji": "🍗",
           "example": {
-            "en": "This is chicken.",
+            "en": "This is some chicken.",
             "zh": "这是鸡肉。"
           }
         },
@@ -906,7 +906,7 @@ export const grade3: Grade = {
           "zh": "牛肉",
           "emoji": "🥩",
           "example": {
-            "en": "This is beef.",
+            "en": "This is some beef.",
             "zh": "这是牛肉。"
           }
         },
@@ -916,7 +916,7 @@ export const grade3: Grade = {
           "zh": "蔬菜",
           "emoji": "🥬",
           "example": {
-            "en": "This is vegetable.",
+            "en": "This is a vegetable.",
             "zh": "这是蔬菜。"
           }
         },
@@ -926,7 +926,7 @@ export const grade3: Grade = {
           "zh": "水果",
           "emoji": "🍓",
           "example": {
-            "en": "This is fruit.",
+            "en": "This is some fruit.",
             "zh": "这是水果。"
           }
         },
@@ -946,7 +946,7 @@ export const grade3: Grade = {
           "zh": "沙拉",
           "emoji": "🥗",
           "example": {
-            "en": "This is salad.",
+            "en": "This is some salad.",
             "zh": "这是沙拉。"
           }
         },
@@ -956,7 +956,7 @@ export const grade3: Grade = {
           "zh": "三明治",
           "emoji": "🥪",
           "example": {
-            "en": "This is sandwich.",
+            "en": "This is a sandwich.",
             "zh": "这是三明治。"
           }
         },
@@ -966,7 +966,7 @@ export const grade3: Grade = {
           "zh": "汉堡包",
           "emoji": "🍔",
           "example": {
-            "en": "This is hamburger.",
+            "en": "This is a hamburger.",
             "zh": "这是汉堡包。"
           }
         },
@@ -976,7 +976,7 @@ export const grade3: Grade = {
           "zh": "饺子",
           "emoji": "🥟",
           "example": {
-            "en": "This is dumpling.",
+            "en": "This is a dumpling.",
             "zh": "这是饺子。"
           }
         },
@@ -986,7 +986,7 @@ export const grade3: Grade = {
           "zh": "菜单",
           "emoji": "📋",
           "example": {
-            "en": "This is menu.",
+            "en": "This is a menu.",
             "zh": "这是菜单。"
           }
         },
@@ -996,7 +996,7 @@ export const grade3: Grade = {
           "zh": "餐馆",
           "emoji": "🍽️",
           "example": {
-            "en": "This is restaurant.",
+            "en": "This is a restaurant.",
             "zh": "这是餐馆。"
           }
         },
@@ -1006,7 +1006,7 @@ export const grade3: Grade = {
           "zh": "服务员",
           "emoji": "🧑‍🍳",
           "example": {
-            "en": "This is waiter.",
+            "en": "This is a waiter.",
             "zh": "这是服务员。"
           }
         },
@@ -1016,7 +1016,7 @@ export const grade3: Grade = {
           "zh": "早餐",
           "emoji": "🍳",
           "example": {
-            "en": "This is breakfast.",
+            "en": "Breakfast is ready.",
             "zh": "这是早餐。"
           }
         },
@@ -1026,7 +1026,7 @@ export const grade3: Grade = {
           "zh": "午餐",
           "emoji": "🥪",
           "example": {
-            "en": "This is lunch.",
+            "en": "Lunch is ready.",
             "zh": "这是午餐。"
           }
         },
@@ -1036,7 +1036,7 @@ export const grade3: Grade = {
           "zh": "晚餐",
           "emoji": "🍛",
           "example": {
-            "en": "This is dinner.",
+            "en": "Dinner is ready.",
             "zh": "这是晚餐。"
           }
         },
@@ -1046,7 +1046,7 @@ export const grade3: Grade = {
           "zh": "主厨",
           "emoji": "👨‍🍳",
           "example": {
-            "en": "This is chef.",
+            "en": "This is a chef.",
             "zh": "这是主厨。"
           }
         }
@@ -1090,7 +1090,7 @@ export const grade3: Grade = {
           "zh": "马",
           "emoji": "🐴",
           "example": {
-            "en": "This is horse.",
+            "en": "This is a horse.",
             "zh": "这是马。"
           }
         },
@@ -1100,7 +1100,7 @@ export const grade3: Grade = {
           "zh": "绵羊",
           "emoji": "🐑",
           "example": {
-            "en": "This is sheep.",
+            "en": "This is a sheep.",
             "zh": "这是绵羊。"
           }
         },
@@ -1110,7 +1110,7 @@ export const grade3: Grade = {
           "zh": "山羊",
           "emoji": "🐐",
           "example": {
-            "en": "This is goat.",
+            "en": "This is a goat.",
             "zh": "这是山羊。"
           }
         },
@@ -1120,7 +1120,7 @@ export const grade3: Grade = {
           "zh": "老鼠",
           "emoji": "🐭",
           "example": {
-            "en": "This is mouse.",
+            "en": "This is a mouse.",
             "zh": "这是老鼠。"
           }
         },
@@ -1130,7 +1130,7 @@ export const grade3: Grade = {
           "zh": "狮子",
           "emoji": "🦁",
           "example": {
-            "en": "This is lion.",
+            "en": "This is a lion.",
             "zh": "这是狮子。"
           }
         },
@@ -1140,7 +1140,7 @@ export const grade3: Grade = {
           "zh": "斑马",
           "emoji": "🦓",
           "example": {
-            "en": "This is zebra.",
+            "en": "This is a zebra.",
             "zh": "这是斑马。"
           }
         },
@@ -1150,7 +1150,7 @@ export const grade3: Grade = {
           "zh": "狐狸",
           "emoji": "🦊",
           "example": {
-            "en": "This is fox.",
+            "en": "This is a fox.",
             "zh": "这是狐狸。"
           }
         },
@@ -1160,7 +1160,7 @@ export const grade3: Grade = {
           "zh": "狼",
           "emoji": "🐺",
           "example": {
-            "en": "This is wolf.",
+            "en": "This is a wolf.",
             "zh": "这是狼。"
           }
         },
@@ -1170,7 +1170,7 @@ export const grade3: Grade = {
           "zh": "乌龟",
           "emoji": "🐢",
           "example": {
-            "en": "This is turtle.",
+            "en": "This is a turtle.",
             "zh": "这是乌龟。"
           }
         },
@@ -1180,7 +1180,7 @@ export const grade3: Grade = {
           "zh": "蛇",
           "emoji": "🐍",
           "example": {
-            "en": "This is snake.",
+            "en": "This is a snake.",
             "zh": "这是蛇。"
           }
         },
@@ -1190,7 +1190,7 @@ export const grade3: Grade = {
           "zh": "农场",
           "emoji": "🚜",
           "example": {
-            "en": "This is farm.",
+            "en": "This is a farm.",
             "zh": "这是农场。"
           }
         },
@@ -1200,7 +1200,7 @@ export const grade3: Grade = {
           "zh": "动物园",
           "emoji": "🦒",
           "example": {
-            "en": "This is zoo.",
+            "en": "This is a zoo.",
             "zh": "这是动物园。"
           }
         },
@@ -1210,7 +1210,7 @@ export const grade3: Grade = {
           "zh": "尾巴",
           "emoji": "🦚",
           "example": {
-            "en": "This is tail.",
+            "en": "This is a tail.",
             "zh": "这是尾巴。"
           }
         },
@@ -1220,7 +1220,7 @@ export const grade3: Grade = {
           "zh": "翅膀",
           "emoji": "🪽",
           "example": {
-            "en": "This is wing.",
+            "en": "This is a wing.",
             "zh": "这是翅膀。"
           }
         },
@@ -1230,7 +1230,7 @@ export const grade3: Grade = {
           "zh": "羽毛",
           "emoji": "🪶",
           "example": {
-            "en": "This is feather.",
+            "en": "This is a feather.",
             "zh": "这是羽毛。"
           }
         },
@@ -1240,7 +1240,7 @@ export const grade3: Grade = {
           "zh": "皮毛",
           "emoji": "🧥",
           "example": {
-            "en": "This is fur.",
+            "en": "The fur is soft.",
             "zh": "这是皮毛。"
           }
         }
@@ -1902,4 +1902,3 @@ export const grade3: Grade = {
     }
   ]
 }
-

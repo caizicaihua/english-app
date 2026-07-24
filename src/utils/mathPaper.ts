@@ -153,7 +153,7 @@ function generateTensCalcExpression(): ExpressionValue {
     }
   }
 
-  const left = randomInt(2, 10) * 10 + randomInt(0, 9)
+  const left = randomInt(2, 9) * 10 + randomInt(0, 9)
   const maxTens = Math.floor(left / 10)
   const right = randomInt(1, maxTens) * 10
   return {

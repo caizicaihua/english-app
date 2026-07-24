@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion'
 import { gradeCatalog, getTotalWords } from '../data/words'
-import { loadProgress } from '../utils/storage'
+import { getActiveStreak, getLocalDateKey, loadProgress } from '../utils/storage'
 
 export default function StatsPage() {
   const progress = loadProgress()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getLocalDateKey()
   const todayCount = progress.dailyWords[today] || 0
+  const activeStreak = getActiveStreak(progress)
 
   return (
     <div>
@@ -18,7 +19,7 @@ export default function StatsPage() {
         {[
           { label: '今日学习', value: todayCount, emoji: '📝', color: 'text-primary' },
           { label: '累计单词', value: progress.learnedWords.length, emoji: '📚', color: 'text-success' },
-          { label: '连续天数', value: progress.streak, emoji: '🔥', color: 'text-warning' },
+          { label: '连续天数', value: activeStreak, emoji: '🔥', color: 'text-warning' },
           { label: '错题待复习', value: progress.wrongWords.length, emoji: '📕', color: 'text-danger' },
         ].map((stat, i) => (
           <motion.div

@@ -619,7 +619,7 @@ export const grade1: Grade = {
           "zh": "樱桃",
           "emoji": "🍒",
           "example": {
-            "en": "I like cherries.",
+            "en": "I like this cherry.",
             "zh": "我喜欢樱桃。"
           }
         },
@@ -1648,7 +1648,7 @@ export const grade1: Grade = {
           "zh": "米饭",
           "emoji": "🍚",
           "example": {
-            "en": "This is rice.",
+            "en": "This is some rice.",
             "zh": "这是米饭。"
           }
         },
@@ -2325,4 +2325,3 @@ export const grade1: Grade = {
     }
   ]
 }
-

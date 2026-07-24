@@ -1,166 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { loadGrade, type DialogueLine, type Grade, type Unit, type Word } from '../data/words'
-import { loadProgress, saveProgress, completeUnit, addWrongWord, markWordLearned } from '../utils/storage'
+import { loadGrade, loadWordsByIds, type Grade, type Unit, type Word } from '../data/words'
+import { generateQuestions, shuffle, type Question } from '../utils/quiz'
+import { loadProgress, saveProgress, completeUnit, addWrongWord, recordStudyActivity } from '../utils/storage'
 import { speak } from '../utils/speech'
 import StarRating from '../components/StarRating'
-
-type QuestionType = 'zh2en' | 'listen' | 'match' | 'spell' | 'sentence' | 'dialogue'
-
-interface DialoguePrompt {
-  title: string
-  lines: DialogueLine[]
-}
-
-interface Question {
-  type: QuestionType
-  word: Word
-  options?: string[]
-  correctAnswer: string
-  matchWords?: Word[]
-  displayLetters?: string[]
-  hiddenIndices?: number[]
-  sentencePrompt?: {
-    en: string
-    zh: string
-  }
-  dialoguePrompt?: DialoguePrompt
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
-function pickDistractors(correct: Word, pool: Word[], count: number): Word[] {
-  const others = pool.filter(w => w.id !== correct.id)
-  return shuffle(others).slice(0, count)
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function containsWord(text: string, answer: string): boolean {
-  return new RegExp(`\\b${escapeRegExp(answer)}\\b`, 'i').test(text)
-}
-
-function blankWord(text: string, answer: string): string {
-  return text.replace(new RegExp(`\\b${escapeRegExp(answer)}\\b`, 'i'), '____')
-}
-
-function buildDialoguePrompts(unit: Unit): Array<{ word: Word; prompt: DialoguePrompt }> {
-  if (!unit.dialogues?.length) return []
-
-  const wordsByLength = [...unit.words].sort((first, second) => second.en.length - first.en.length)
-  const prompts: Array<{ word: Word; prompt: DialoguePrompt }> = []
-
-  for (const dialogue of unit.dialogues) {
-    for (let index = 0; index < dialogue.lines.length; index += 1) {
-      const line = dialogue.lines[index]
-      const matchedWord = wordsByLength.find(word => containsWord(line.en, word.en))
-      if (!matchedWord) continue
-
-      prompts.push({
-        word: matchedWord,
-        prompt: {
-          title: dialogue.title,
-          lines: dialogue.lines.map((item, itemIndex) => (
-            itemIndex === index
-              ? { ...item, en: blankWord(item.en, matchedWord.en) }
-              : item
-          )),
-        },
-      })
-    }
-  }
-
-  return prompts
-}
-
-function generateQuestions(unit: Unit, allGradeWords: Word[]): Question[] {
-  const words = unit.words
-  const pool = allGradeWords.length >= 4 ? allGradeWords : words
-  const questions: Question[] = []
-  const shuffledWords = shuffle(words)
-  const sentenceWords = shuffle(words.filter(word => word.example))
-  const dialoguePrompts = shuffle(buildDialoguePrompts(unit))
-  const types: QuestionType[] = ['zh2en', 'listen', 'match', 'spell']
-
-  if (sentenceWords.length > 0) types.push('sentence')
-  if (dialoguePrompts.length > 0) types.push('dialogue')
-
-  let sentenceIndex = 0
-  let dialogueIndex = 0
-
-  for (let i = 0; i < 10 && i < shuffledWords.length * 2; i++) {
-    const word = shuffledWords[i % shuffledWords.length]
-    const type = types[i % types.length]
-
-    if (type === 'match') {
-      const matchWords = shuffle(words).slice(0, Math.min(4, words.length))
-      questions.push({
-        type: 'match',
-        word: matchWords[0],
-        correctAnswer: '',
-        matchWords,
-      })
-    } else if (type === 'sentence' && sentenceWords.length > 0) {
-      const sentenceWord = sentenceWords[sentenceIndex % sentenceWords.length]
-      sentenceIndex += 1
-      const distractors = pickDistractors(sentenceWord, pool, 3)
-      questions.push({
-        type: 'sentence',
-        word: sentenceWord,
-        options: shuffle([sentenceWord, ...distractors]).map(item => item.en),
-        correctAnswer: sentenceWord.en,
-        sentencePrompt: {
-          en: blankWord(sentenceWord.example!.en, sentenceWord.en),
-          zh: sentenceWord.example!.zh,
-        },
-      })
-    } else if (type === 'dialogue' && dialoguePrompts.length > 0) {
-      const currentDialogue = dialoguePrompts[dialogueIndex % dialoguePrompts.length]
-      dialogueIndex += 1
-      const distractors = pickDistractors(currentDialogue.word, pool, 3)
-      questions.push({
-        type: 'dialogue',
-        word: currentDialogue.word,
-        options: shuffle([currentDialogue.word, ...distractors]).map(item => item.en),
-        correctAnswer: currentDialogue.word.en,
-        dialoguePrompt: currentDialogue.prompt,
-      })
-    } else if (type === 'spell') {
-      const letters = word.en.split('')
-      const numHidden = Math.min(Math.max(1, Math.ceil(letters.length * 0.4)), 3)
-      const indices = shuffle(letters.map((_, idx) => idx)).slice(0, numHidden).sort((a, b) => a - b)
-      const display = letters.map((l, idx) => indices.includes(idx) ? '_' : l)
-      questions.push({
-        type: 'spell',
-        word,
-        correctAnswer: word.en,
-        displayLetters: display,
-        hiddenIndices: indices,
-      })
-    } else {
-      const distractors = pickDistractors(word, pool, 3)
-      const options = shuffle([word, ...distractors]).map(w => w.en)
-      questions.push({
-        type,
-        word,
-        options,
-        correctAnswer: word.en,
-      })
-    }
-  }
-
-  return shuffle(questions).slice(0, 10)
-}
 
 // --- Sub Components ---
 
@@ -264,7 +109,9 @@ function ChoiceQuestion({ question, onAnswer, gradeColor }: {
 }
 
 function MatchQuestion({ question, onAnswer, gradeColor }: {
-  question: Question; onAnswer: (correct: boolean) => void; gradeColor: string
+  question: Question
+  onAnswer: (correct: boolean, wrongWordIds?: string[]) => void
+  gradeColor: string
 }) {
   const words = question.matchWords!
   const shuffledZh = useMemo(() => shuffle(words), [words])
@@ -272,6 +119,7 @@ function MatchQuestion({ question, onAnswer, gradeColor }: {
   const [matched, setMatched] = useState<Set<string>>(new Set())
   const [wrongPair, setWrongPair] = useState<string | null>(null)
   const [mistakes, setMistakes] = useState(0)
+  const mistakenWordIds = useRef(new Set<string>())
 
   const handleLeftClick = (id: string) => {
     if (matched.has(id)) return
@@ -287,9 +135,11 @@ function MatchQuestion({ question, onAnswer, gradeColor }: {
       setMatched(newMatched)
       setSelectedLeft(null)
       if (newMatched.size === words.length) {
-        setTimeout(() => onAnswer(mistakes === 0), 500)
+        setTimeout(() => onAnswer(mistakes === 0, [...mistakenWordIds.current]), 500)
       }
     } else {
+      mistakenWordIds.current.add(selectedLeft)
+      mistakenWordIds.current.add(id)
       setWrongPair(id)
       setMistakes(m => m + 1)
       setTimeout(() => { setWrongPair(null); setSelectedLeft(null) }, 600)
@@ -443,8 +293,14 @@ function SpellQuestion({ question, onAnswer, gradeColor }: {
 
 // --- Result Screen ---
 
-function ResultScreen({ score, total, stars, gradeColor, onRetry, onBack }: {
-  score: number; total: number; stars: number; gradeColor: string; onRetry: () => void; onBack: () => void
+function ResultScreen({ score, total, stars, gradeColor, title = '闯关完成！', onRetry, onBack }: {
+  score: number
+  total: number
+  stars: number
+  gradeColor: string
+  title?: string
+  onRetry: () => void
+  onBack: () => void
 }) {
   return (
     <motion.div
@@ -460,7 +316,7 @@ function ResultScreen({ score, total, stars, gradeColor, onRetry, onBack }: {
       >
         {stars >= 3 ? '🏆' : stars >= 2 ? '🎉' : stars >= 1 ? '👍' : '💪'}
       </motion.div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">闯关完成！</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-2">{title}</h2>
       <div className="text-4xl font-bold mb-2" style={{ color: gradeColor }}>
         {score} 分
       </div>
@@ -492,32 +348,70 @@ function ResultScreen({ score, total, stars, gradeColor, onRetry, onBack }: {
 
 // --- Main Quiz Page ---
 
-export default function QuizPage() {
+interface QuizPageProps {
+  reviewMode?: boolean
+}
+
+export default function QuizPage({ reviewMode = false }: QuizPageProps) {
   const { gradeId, unitId } = useParams()
   const navigate = useNavigate()
   const [grade, setGrade] = useState<Grade | null>(null)
+  const [reviewPool, setReviewPool] = useState<Word[]>([])
   const [loading, setLoading] = useState(true)
   const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     let active = true
 
+    if (reviewMode) {
+      const wrongWordIds = loadProgress().wrongWords
+
+      Promise.all([
+        loadWordsByIds(wrongWordIds),
+        Promise.all([1, 2, 3, 4, 5, 6].map(id => loadGrade(id))),
+      ]).then(([wrongWords, loadedGrades]) => {
+        if (!active) return
+
+        const reviewUnit: Unit = {
+          id: 0,
+          name: 'Wrong Book Review',
+          nameZh: '错题重练',
+          words: wrongWords,
+        }
+
+        setGrade({
+          id: 0,
+          name: '错题重练',
+          color: '#6366f1',
+          emoji: '📕',
+          units: [reviewUnit],
+        })
+        setReviewPool(loadedGrades.flatMap(item => item?.units.flatMap(unit => unit.words) ?? []))
+        setLoading(false)
+      })
+
+      return () => {
+        active = false
+      }
+    }
+
     loadGrade(Number(gradeId)).then(data => {
       if (!active) return
       setGrade(data ?? null)
+      setReviewPool([])
       setLoading(false)
     })
 
     return () => {
       active = false
     }
-  }, [gradeId, unitId])
+  }, [gradeId, reviewMode, unitId])
 
-  const unit = grade?.units.find(u => u.id === Number(unitId))
+  const unit = grade?.units.find(u => u.id === (reviewMode ? 0 : Number(unitId)))
 
   const allGradeWords = useMemo(
-    () => grade?.units.flatMap(u => u.words) ?? [],
-    [grade]
+    () => reviewMode ? reviewPool : grade?.units.flatMap(u => u.words) ?? [],
+    [grade, reviewMode, reviewPool]
   )
 
   const questions = useMemo(
@@ -532,36 +426,43 @@ export default function QuizPage() {
   const [finished, setFinished] = useState(false)
   const [result, setResult] = useState<{ score: number; stars: number } | null>(null)
 
-  const handleAnswer = useCallback((correct: boolean) => {
+  const handleAnswer = useCallback((correct: boolean, wrongWordIds?: string[]) => {
     const nextScore = correct ? score + 10 : score
 
     if (correct) {
       setScore(nextScore)
     } else {
       const q = questions[currentQ]
-      if (q.type !== 'match') {
-        const progress = loadProgress()
-        saveProgress(addWrongWord(progress, q.word.id))
+      const idsToAdd = wrongWordIds?.length
+        ? wrongWordIds
+        : q.type === 'match'
+          ? []
+          : [q.word.id]
+
+      if (idsToAdd.length > 0) {
+        let progress = loadProgress()
+        for (const wordId of idsToAdd) {
+          progress = addWrongWord(progress, wordId)
+        }
+        saveProgress(progress)
       }
     }
 
     if (currentQ >= questions.length - 1) {
       const stars = nextScore >= 100 ? 3 : nextScore >= 80 ? 2 : nextScore >= 60 ? 1 : 0
-      if (stars > 0 && grade && unit) {
-        const progress = loadProgress()
-        const updated = completeUnit(progress, grade.id, unit.id, stars)
-        let withWords = updated
-        for (const w of unit.words) {
-          withWords = markWordLearned(withWords, w.id)
-        }
-        saveProgress(withWords)
+
+      let progress = recordStudyActivity(loadProgress())
+      if (!reviewMode && stars > 0 && grade && unit) {
+        progress = completeUnit(progress, grade.id, unit.id, stars)
       }
+      saveProgress(progress)
+
       setResult({ score: nextScore, stars })
       setFinished(true)
       return
     }
     setCurrentQ(q => q + 1)
-  }, [currentQ, questions, score, grade, unit])
+  }, [currentQ, questions, score, grade, reviewMode, unit])
 
   const handleRetry = () => {
     if (!unit) return
@@ -576,6 +477,44 @@ export default function QuizPage() {
 
   if (!grade || !unit) return <div className="text-center py-10">未找到该单元</div>
 
+  if (reviewMode && unit.words.length === 0) {
+    return (
+      <div className="text-center py-10">
+        <div className="text-5xl mb-4">🎉</div>
+        <h2 className="text-xl font-bold text-gray-800">错题本已经清空</h2>
+        <button
+          onClick={() => navigate('/wrong-book')}
+          className="mt-5 px-6 py-3 rounded-xl bg-primary text-white font-bold"
+        >
+          返回错题本
+        </button>
+      </div>
+    )
+  }
+
+  const unitIndex = grade.units.findIndex(item => item.id === unit.id)
+  const previousUnit = unitIndex > 0 ? grade.units[unitIndex - 1] : null
+  const isLocked = !reviewMode
+    && !!previousUnit
+    && !loadProgress().completedUnits[`${grade.id}-${previousUnit.id}`]
+
+  if (isLocked) {
+    return (
+      <div className="text-center py-10">
+        <div className="text-5xl mb-4">🔒</div>
+        <h2 className="text-xl font-bold text-gray-800">这一关还没有解锁</h2>
+        <p className="text-sm text-gray-500 mt-2">请先完成上一单元的闯关。</p>
+        <button
+          onClick={() => navigate(`/grade/${grade.id}`)}
+          className="mt-5 px-6 py-3 rounded-xl text-white font-bold"
+          style={{ backgroundColor: grade.color }}
+        >
+          返回年级页
+        </button>
+      </div>
+    )
+  }
+
   if (questions.length === 0) return <div className="text-center py-10 text-gray-400">正在生成题目...</div>
 
   if (finished && result) {
@@ -585,8 +524,9 @@ export default function QuizPage() {
         total={questions.length}
         stars={result.stars}
         gradeColor={grade.color}
+        title={reviewMode ? '错题重练完成！' : '闯关完成！'}
         onRetry={handleRetry}
-        onBack={() => navigate(`/grade/${grade.id}`)}
+        onBack={() => navigate(reviewMode ? '/wrong-book' : `/grade/${grade.id}`)}
       />
     )
   }

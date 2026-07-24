@@ -56,6 +56,28 @@ export default function LearnPage() {
 
   if (!grade || !unit) return <div className="text-center py-10">未找到该单元</div>
 
+  const unitIndex = grade.units.findIndex(item => item.id === unit.id)
+  const previousUnit = unitIndex > 0 ? grade.units[unitIndex - 1] : null
+  const isLocked = !!previousUnit
+    && !loadProgress().completedUnits[`${grade.id}-${previousUnit.id}`]
+
+  if (isLocked) {
+    return (
+      <div className="text-center py-10">
+        <div className="text-5xl mb-4">🔒</div>
+        <h2 className="text-xl font-bold text-gray-800">这个单元还没有解锁</h2>
+        <p className="text-sm text-gray-500 mt-2">请先完成上一单元的闯关。</p>
+        <button
+          onClick={() => navigate(`/grade/${grade.id}`)}
+          className="mt-5 px-6 py-3 rounded-xl text-white font-bold"
+          style={{ backgroundColor: grade.color }}
+        >
+          返回年级页
+        </button>
+      </div>
+    )
+  }
+
   const words = unit.words
   const word = words[currentIndex]
   const dialogue = unit.dialogues?.find(item =>
