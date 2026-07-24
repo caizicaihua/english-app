@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const progress = loadProgress()
   const mathProgress = loadMathProgress()
   const mathPaperProgress = getMathModeProgress(mathProgress, 'paper')
+  const mathQuickProgress = getMathModeProgress(mathProgress, 'quick')
 
   const handleSpeedChange = (speed: SpeechSpeedPreset) => {
     setSpeechSpeed(speed)
@@ -45,7 +46,8 @@ export default function SettingsPage() {
             <p>已完成单元：{Object.keys(progress.completedUnits).length} 个</p>
             <p>错题本：{progress.wrongWords.length} 个</p>
             <p>数学错题：{mathProgress.wrongQuestions.length} 个</p>
-            <p>数学最高分：{mathPaperProgress.bestScore} 分</p>
+            <p>数学快速练最高：{mathQuickProgress.bestScore}/20</p>
+            <p>数学整卷最高：{mathPaperProgress.bestScore}/100</p>
             <p>已解锁成就：{progress.achievements.length} 个</p>
           </div>
         </div>

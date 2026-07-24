@@ -13,54 +13,85 @@ import {
 } from '../data/math'
 
 type CompareSymbol = '>' | '<' | '='
+type MathRandomSource = () => number
 
-type ExpressionValue = {
+interface ExpressionValue {
   text: string
   value: number
 }
 
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min
+function randomInt(randomSource: MathRandomSource, min: number, max: number): number {
+  if (max < min) throw new Error(`无效随机范围：${min}-${max}`)
+  const randomValue = Math.min(0.999999999, Math.max(0, randomSource()))
+  return Math.floor(randomValue * (max - min + 1)) + min
 }
 
-function sample<T>(items: T[]): T {
-  return items[randomInt(0, items.length - 1)]
+function sample<T>(items: T[], randomSource: MathRandomSource): T {
+  if (items.length === 0) throw new Error('无法从空数组随机取值')
+  return items[randomInt(randomSource, 0, items.length - 1)]
 }
 
-function shuffle<T>(items: T[]): T[] {
+function shuffle<T>(items: T[], randomSource: MathRandomSource): T[] {
   const next = [...items]
   for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = randomInt(0, index)
+    const swapIndex = randomInt(randomSource, 0, index)
     ;[next[index], next[swapIndex]] = [next[swapIndex], next[index]]
   }
   return next
 }
 
-function sectionLabelForType(type: MathQuestionType): string {
-  return mathPaperConfig.sections.find(section => section.type === type)?.label ?? ''
+function sectionLabelForType(config: MathPaperConfig, type: MathQuestionType): string {
+  return config.sections.find(section => section.type === type)?.label ?? ''
 }
 
-function formatCalcPrompt(expression: string): string {
-  return `${expression} =`
+function sectionCountForType(config: MathPaperConfig, type: MathQuestionType): number {
+  return config.sections.find(section => section.type === type)?.count ?? 0
 }
 
-function formatFillPrompt(beforeBlank: string, afterBlank: string): string {
-  return `${beforeBlank}( )${afterBlank}`
+function validateMathPaperConfig(config: MathPaperConfig): void {
+  const sectionTypes = config.sections.map(section => section.type)
+  const sectionTotal = config.sections.reduce((sum, section) => sum + section.count, 0)
+  const calcTotal = Object.values(config.calcCounts).reduce((sum, count) => sum + count, 0)
+
+  if (
+    !Number.isInteger(config.totalQuestions)
+    || config.totalQuestions <= 0
+    || !Number.isInteger(config.durationSeconds)
+    || config.durationSeconds <= 0
+  ) {
+    throw new Error('数学试卷配置的题量和时长必须为正整数')
+  }
+
+  if (
+    config.sections.some(section => !Number.isInteger(section.count) || section.count < 0)
+    || new Set(sectionTypes).size !== sectionTypes.length
+    || sectionTotal !== config.totalQuestions
+  ) {
+    throw new Error('数学试卷分区题量与总题量不一致')
+  }
+
+  if (
+    Object.values(config.calcCounts).some(count => !Number.isInteger(count) || count < 0)
+    || calcTotal !== sectionCountForType(config, 'calc')
+  ) {
+    throw new Error('数学试卷计算题子类型题量不一致')
+  }
 }
 
-function formatComparePrompt(leftText: string, rightText: string): string {
-  return `${leftText} ? ${rightText}`
-}
-
-function createCalcQuestion(id: string, expression: string, answer: number): MathQuestionCalc {
+function createCalcQuestion(
+  id: string,
+  expression: string,
+  answer: number,
+  sectionLabel: string,
+): MathQuestionCalc {
   return {
     id,
     reviewKey: `calc:${expression}`,
     type: 'calc',
     expression,
-    prompt: formatCalcPrompt(expression),
+    prompt: `${expression} =`,
     correctAnswer: String(answer),
-    sectionLabel: sectionLabelForType('calc'),
+    sectionLabel,
   }
 }
 
@@ -68,7 +99,8 @@ function createFillQuestion(
   id: string,
   beforeBlank: string,
   afterBlank: string,
-  answer: number
+  answer: number,
+  sectionLabel: string,
 ): MathQuestionFill {
   return {
     id,
@@ -76,9 +108,9 @@ function createFillQuestion(
     type: 'fill',
     beforeBlank,
     afterBlank,
-    prompt: formatFillPrompt(beforeBlank, afterBlank),
+    prompt: `${beforeBlank}( )${afterBlank}`,
     correctAnswer: String(answer),
-    sectionLabel: sectionLabelForType('fill'),
+    sectionLabel,
   }
 }
 
@@ -86,7 +118,8 @@ function createCompareQuestion(
   id: string,
   leftText: string,
   rightText: string,
-  symbol: CompareSymbol
+  symbol: CompareSymbol,
+  sectionLabel: string,
 ): MathQuestionCompare {
   return {
     id,
@@ -94,39 +127,41 @@ function createCompareQuestion(
     type: 'compare',
     leftText,
     rightText,
-    prompt: formatComparePrompt(leftText, rightText),
+    prompt: `${leftText} ? ${rightText}`,
     correctAnswer: symbol,
-    sectionLabel: sectionLabelForType('compare'),
+    sectionLabel,
   }
 }
 
-function generateSmallCalcExpression(): ExpressionValue {
-  const operator = sample(['+', '-'] as const)
+function generateSmallCalcExpression(randomSource: MathRandomSource): ExpressionValue {
+  const operator = sample(['+', '-'] as const, randomSource)
 
   if (operator === '+') {
-    const left = randomInt(1, 18)
-    const right = randomInt(1, 20 - left)
+    const left = randomInt(randomSource, 1, 18)
+    const right = randomInt(randomSource, 1, 20 - left)
     return {
       text: `${left}+${right}`,
       value: left + right,
     }
   }
 
-  const left = randomInt(2, 20)
-  const right = randomInt(1, left)
+  const left = randomInt(randomSource, 2, 20)
+  const right = randomInt(randomSource, 1, left)
   return {
     text: `${left}-${right}`,
     value: left - right,
   }
 }
 
-function generateTensCalcExpression(): ExpressionValue {
-  const templates = ['tens+tens', 'unit+tens', 'tens-unit', 'number-tens'] as const
-  const template = sample([...templates])
+function generateTensCalcExpression(randomSource: MathRandomSource): ExpressionValue {
+  const template = sample(
+    ['tens+tens', 'unit+tens', 'tens-unit', 'number-tens'] as const,
+    randomSource,
+  )
 
   if (template === 'tens+tens') {
-    const left = randomInt(1, 8) * 10
-    const right = randomInt(1, Math.floor((100 - left) / 10)) * 10
+    const left = randomInt(randomSource, 1, 8) * 10
+    const right = randomInt(randomSource, 1, Math.floor((100 - left) / 10)) * 10
     return {
       text: `${left}+${right}`,
       value: left + right,
@@ -134,9 +169,8 @@ function generateTensCalcExpression(): ExpressionValue {
   }
 
   if (template === 'unit+tens') {
-    const left = randomInt(1, 9)
-    const right = randomInt(1, 9) * 10
-    if (left + right > 100) return generateTensCalcExpression()
+    const left = randomInt(randomSource, 1, 9)
+    const right = randomInt(randomSource, 1, 9) * 10
     return {
       text: `${left}+${right}`,
       value: left + right,
@@ -144,31 +178,32 @@ function generateTensCalcExpression(): ExpressionValue {
   }
 
   if (template === 'tens-unit') {
-    const left = randomInt(2, 10) * 10
-    const right = randomInt(1, 9)
-    if (left - right < 0) return generateTensCalcExpression()
+    const left = randomInt(randomSource, 2, 10) * 10
+    const right = randomInt(randomSource, 1, 9)
     return {
       text: `${left}-${right}`,
       value: left - right,
     }
   }
 
-  const left = randomInt(2, 9) * 10 + randomInt(0, 9)
-  const maxTens = Math.floor(left / 10)
-  const right = randomInt(1, maxTens) * 10
+  const left = randomInt(randomSource, 2, 9) * 10 + randomInt(randomSource, 0, 9)
+  const right = randomInt(randomSource, 1, Math.floor(left / 10)) * 10
   return {
     text: `${left}-${right}`,
     value: left - right,
   }
 }
 
-function generateChainCalcExpression(): ExpressionValue {
-  const template = sample(['plus-plus', 'plus-minus', 'minus-plus', 'minus-minus'] as const)
+function generateChainCalcExpression(randomSource: MathRandomSource): ExpressionValue {
+  const template = sample(
+    ['plus-plus', 'plus-minus', 'minus-plus', 'minus-minus'] as const,
+    randomSource,
+  )
 
   if (template === 'plus-plus') {
-    const first = randomInt(1, 9)
-    const second = randomInt(1, 9)
-    const third = randomInt(1, Math.max(1, 20 - first - second))
+    const first = randomInt(randomSource, 1, 9)
+    const second = randomInt(randomSource, 1, 9)
+    const third = randomInt(randomSource, 1, Math.max(1, 20 - first - second))
     return {
       text: `${first}+${second}+${third}`,
       value: first + second + third,
@@ -176,9 +211,9 @@ function generateChainCalcExpression(): ExpressionValue {
   }
 
   if (template === 'plus-minus') {
-    const first = randomInt(5, 14)
-    const second = randomInt(1, Math.min(9, 20 - first))
-    const third = randomInt(1, first + second)
+    const first = randomInt(randomSource, 5, 14)
+    const second = randomInt(randomSource, 1, Math.min(9, 20 - first))
+    const third = randomInt(randomSource, 1, first + second)
     return {
       text: `${first}+${second}-${third}`,
       value: first + second - third,
@@ -186,104 +221,137 @@ function generateChainCalcExpression(): ExpressionValue {
   }
 
   if (template === 'minus-plus') {
-    const first = randomInt(8, 20)
-    const second = randomInt(1, first)
+    const first = randomInt(randomSource, 8, 20)
+    const second = randomInt(randomSource, 1, first)
     const current = first - second
-    const third = randomInt(1, Math.max(1, 20 - current))
+    const third = randomInt(randomSource, 1, Math.max(1, 20 - current))
     return {
       text: `${first}-${second}+${third}`,
       value: current + third,
     }
   }
 
-  const first = randomInt(10, 20)
-  const second = randomInt(1, first - 1)
-  const third = randomInt(1, first - second)
+  const first = randomInt(randomSource, 10, 20)
+  const second = randomInt(randomSource, 1, first - 1)
+  const third = randomInt(randomSource, 1, first - second)
   return {
     text: `${first}-${second}-${third}`,
     value: first - second - third,
   }
 }
 
-function buildUniqueQuestions(
-  count: number,
-  type: MathQuestionType,
-  generator: () => ExpressionValue,
-  idPrefix: string,
+function buildUniqueCalcQuestions(params: {
+  count: number
+  generator: (randomSource: MathRandomSource) => ExpressionValue
+  idPrefix: string
   usedKeys: Set<string>
-): MathQuestion[] {
-  const questions: MathQuestion[] = []
+  sectionLabel: string
+  randomSource: MathRandomSource
+}): MathQuestionCalc[] {
+  const questions: MathQuestionCalc[] = []
   let attempts = 0
 
-  while (questions.length < count && attempts < count * 50) {
+  while (questions.length < params.count && attempts < Math.max(100, params.count * 100)) {
     attempts += 1
-    const candidate = generator()
+    const candidate = params.generator(params.randomSource)
     const reviewKey = `calc:${candidate.text}`
-    if (usedKeys.has(reviewKey)) continue
-    usedKeys.add(reviewKey)
-    questions.push(createCalcQuestion(`${idPrefix}-${questions.length + 1}`, candidate.text, candidate.value))
-  }
-
-  if (questions.length !== count || type !== 'calc') {
-    return questions
+    if (params.usedKeys.has(reviewKey)) continue
+    params.usedKeys.add(reviewKey)
+    questions.push(createCalcQuestion(
+      `${params.idPrefix}-${questions.length + 1}`,
+      candidate.text,
+      candidate.value,
+      params.sectionLabel,
+    ))
   }
 
   return questions
 }
 
-function generateCalcQuestions(): MathQuestionCalc[] {
+function generateCalcQuestions(
+  config: MathPaperConfig,
+  randomSource: MathRandomSource,
+): MathQuestionCalc[] {
   const usedKeys = new Set<string>()
+  const sectionLabel = sectionLabelForType(config, 'calc')
   const questions = [
-    ...buildUniqueQuestions(35, 'calc', generateSmallCalcExpression, 'calc-small', usedKeys),
-    ...buildUniqueQuestions(20, 'calc', generateTensCalcExpression, 'calc-tens', usedKeys),
-    ...buildUniqueQuestions(15, 'calc', generateChainCalcExpression, 'calc-chain', usedKeys),
+    ...buildUniqueCalcQuestions({
+      count: config.calcCounts.within20,
+      generator: generateSmallCalcExpression,
+      idPrefix: 'calc-within20',
+      usedKeys,
+      sectionLabel,
+      randomSource,
+    }),
+    ...buildUniqueCalcQuestions({
+      count: config.calcCounts.tens,
+      generator: generateTensCalcExpression,
+      idPrefix: 'calc-tens',
+      usedKeys,
+      sectionLabel,
+      randomSource,
+    }),
+    ...buildUniqueCalcQuestions({
+      count: config.calcCounts.chain,
+      generator: generateChainCalcExpression,
+      idPrefix: 'calc-chain',
+      usedKeys,
+      sectionLabel,
+      randomSource,
+    }),
   ]
 
   return questions.map((question, index) => ({
-    ...(question as MathQuestionCalc),
+    ...question,
     id: `calc-${index + 1}`,
   }))
 }
 
-function generateFillQuestions(): MathQuestionFill[] {
+function generateFillQuestions(
+  config: MathPaperConfig,
+  randomSource: MathRandomSource,
+): MathQuestionFill[] {
+  const count = sectionCountForType(config, 'fill')
+  const sectionLabel = sectionLabelForType(config, 'fill')
   const usedKeys = new Set<string>()
   const questions: MathQuestionFill[] = []
   let attempts = 0
 
-  while (questions.length < 20 && attempts < 1000) {
+  while (questions.length < count && attempts < Math.max(100, count * 100)) {
     attempts += 1
-    const template = sample(['blank-plus', 'plus-blank', 'blank-minus', 'minus-blank'] as const)
+    const template = sample(
+      ['blank-plus', 'plus-blank', 'blank-minus', 'minus-blank'] as const,
+      randomSource,
+    )
     let beforeBlank = ''
     let afterBlank = ''
     let answer = 0
 
     if (template === 'blank-plus') {
-      const blank = randomInt(1, 20)
-      const right = randomInt(1, 20)
-      beforeBlank = ''
+      const blank = randomInt(randomSource, 1, 20)
+      const right = randomInt(randomSource, 1, 20)
       afterBlank = ` + ${right} = ${blank + right}`
       answer = blank
     }
 
     if (template === 'plus-blank') {
-      const left = randomInt(1, 20)
-      const blank = randomInt(1, 20)
+      const left = randomInt(randomSource, 1, 20)
+      const blank = randomInt(randomSource, 1, 20)
       beforeBlank = `${left} + `
       afterBlank = ` = ${left + blank}`
       answer = blank
     }
 
     if (template === 'blank-minus') {
-      const blank = randomInt(5, 100)
-      const right = randomInt(1, Math.min(20, blank))
-      beforeBlank = ''
+      const blank = randomInt(randomSource, 5, 100)
+      const right = randomInt(randomSource, 1, Math.min(20, blank))
       afterBlank = ` - ${right} = ${blank - right}`
       answer = blank
     }
 
     if (template === 'minus-blank') {
-      const left = randomInt(5, 100)
-      const blank = randomInt(1, Math.min(20, left))
+      const left = randomInt(randomSource, 5, 100)
+      const blank = randomInt(randomSource, 1, Math.min(20, left))
       beforeBlank = `${left} - `
       afterBlank = ` = ${left - blank}`
       answer = blank
@@ -292,26 +360,30 @@ function generateFillQuestions(): MathQuestionFill[] {
     const reviewKey = `fill:${beforeBlank}( )${afterBlank}`
     if (usedKeys.has(reviewKey)) continue
     usedKeys.add(reviewKey)
-    questions.push(createFillQuestion(`fill-${questions.length + 1}`, beforeBlank, afterBlank, answer))
+    questions.push(createFillQuestion(
+      `fill-${questions.length + 1}`,
+      beforeBlank,
+      afterBlank,
+      answer,
+      sectionLabel,
+    ))
   }
 
   return questions
 }
 
-function expressionForValue(value: number): string {
+function expressionForValue(value: number, randomSource: MathRandomSource): string {
   if (value <= 20) {
-    const template = sample(['plus', 'minus', 'number'] as const)
+    const template = sample(['plus', 'minus', 'number'] as const, randomSource)
 
     if (template === 'plus' && value > 1) {
-      const left = randomInt(1, value - 1)
-      const right = value - left
-      return `${left}+${right}`
+      const left = randomInt(randomSource, 1, value - 1)
+      return `${left}+${value - left}`
     }
 
     if (template === 'minus') {
-      const right = randomInt(1, Math.max(1, 20 - value))
-      const left = value + right
-      return `${left}-${right}`
+      const right = randomInt(randomSource, 1, Math.max(1, 20 - value))
+      return `${value + right}-${right}`
     }
   }
 
@@ -319,69 +391,88 @@ function expressionForValue(value: number): string {
     return sample([
       `${value - 10}+10`,
       `${value + 10}-10`,
-      `${value / 10 - 1}0+10`,
-    ])
+      `${value}-0`,
+    ], randomSource)
   }
 
-  const adjustment = randomInt(1, Math.min(9, 100 - value))
-  if (value + adjustment <= 100) {
-    return `${value + adjustment}-${adjustment}`
-  }
-
-  const addend = randomInt(1, Math.min(9, value - 1))
-  return `${value - addend}+${addend}`
+  const adjustment = randomInt(randomSource, 1, Math.min(9, 100 - value))
+  return `${value + adjustment}-${adjustment}`
 }
 
-function compareSideForValue(value: number, forceExpression: boolean): string {
-  if (!forceExpression && Math.random() > 0.5) {
-    return String(value)
-  }
-  return expressionForValue(value)
+function compareSideForValue(
+  value: number,
+  forceExpression: boolean,
+  randomSource: MathRandomSource,
+): string {
+  if (!forceExpression && randomSource() > 0.5) return String(value)
+  return expressionForValue(value, randomSource)
 }
 
-function generateCompareQuestions(): MathQuestionCompare[] {
-  const symbols = shuffle(['>', '>', '>', '>', '<', '<', '<', '=', '=', '='] as CompareSymbol[])
+function generateCompareQuestions(
+  config: MathPaperConfig,
+  randomSource: MathRandomSource,
+): MathQuestionCompare[] {
+  const count = sectionCountForType(config, 'compare')
+  const sectionLabel = sectionLabelForType(config, 'compare')
+  const symbols = shuffle(
+    Array.from({ length: count }, (_, index) => (
+      ['>', '<', '='] as CompareSymbol[]
+    )[index % 3]),
+    randomSource,
+  )
   const usedKeys = new Set<string>()
   const questions: MathQuestionCompare[] = []
   let attempts = 0
 
-  while (questions.length < 10 && attempts < 1000) {
+  while (questions.length < count && attempts < Math.max(100, count * 100)) {
     attempts += 1
     const symbol = symbols[questions.length]
-    const base = randomInt(4, 90)
-    const delta = randomInt(1, 9)
-    const leftValue = symbol === '>'
-      ? base + delta
-      : symbol === '<'
-        ? base
-        : base
-    const rightValue = symbol === '>'
-      ? base
-      : symbol === '<'
-        ? base + delta
-        : base
-
+    const base = randomInt(randomSource, 4, 90)
+    const delta = randomInt(randomSource, 1, 9)
+    const leftValue = symbol === '>' ? base + delta : base
+    const rightValue = symbol === '<' ? base + delta : base
     if (leftValue > 100 || rightValue > 100) continue
 
-    const caseType = sample(['number-number', 'expression-number', 'expression-expression'] as const)
-    const leftText = compareSideForValue(leftValue, caseType !== 'number-number')
-    const rightText = compareSideForValue(rightValue, caseType === 'expression-expression')
+    const caseType = sample(
+      ['number-number', 'expression-number', 'expression-expression'] as const,
+      randomSource,
+    )
+    const leftText = compareSideForValue(
+      leftValue,
+      caseType !== 'number-number',
+      randomSource,
+    )
+    const rightText = compareSideForValue(
+      rightValue,
+      caseType === 'expression-expression',
+      randomSource,
+    )
     const reviewKey = `compare:${leftText}|${rightText}`
-
     if (usedKeys.has(reviewKey)) continue
     usedKeys.add(reviewKey)
-    questions.push(createCompareQuestion(`compare-${questions.length + 1}`, leftText, rightText, symbol))
+    questions.push(createCompareQuestion(
+      `compare-${questions.length + 1}`,
+      leftText,
+      rightText,
+      symbol,
+      sectionLabel,
+    ))
   }
 
   return questions
 }
 
-export function generateMathPaper(config: MathPaperConfig = mathPaperConfig): MathQuestion[] {
-  const calcQuestions = generateCalcQuestions()
-  const fillQuestions = generateFillQuestions()
-  const compareQuestions = generateCompareQuestions()
+export function generateMathPaper(
+  config: MathPaperConfig = mathPaperConfig,
+  randomSource: MathRandomSource = Math.random,
+): MathQuestion[] {
+  validateMathPaperConfig(config)
 
-  const questions = [...calcQuestions, ...fillQuestions, ...compareQuestions]
+  const questions = [
+    ...generateCalcQuestions(config, randomSource),
+    ...generateFillQuestions(config, randomSource),
+    ...generateCompareQuestions(config, randomSource),
+  ]
 
   if (questions.length !== config.totalQuestions) {
     throw new Error('数学试卷题量生成失败')
@@ -393,11 +484,7 @@ export function generateMathPaper(config: MathPaperConfig = mathPaperConfig): Ma
 function normalizeAnswer(question: MathQuestion, answer: string | undefined): string {
   const trimmed = answer?.trim() ?? ''
   if (!trimmed) return ''
-
-  if (question.type === 'compare') {
-    return trimmed
-  }
-
+  if (question.type === 'compare') return trimmed
   if (!/^\d+$/.test(trimmed)) return trimmed
   return String(Number(trimmed))
 }
@@ -418,17 +505,16 @@ export function buildMathAttempt(params: {
       isCorrect: userAnswer === question.correctAnswer,
     }
   })
-
-  const sections: MathSectionResult[] = mathPaperConfig.sections.map(section => {
-    const sectionQuestions = questionResults.filter(item => item.question.type === section.type)
+  const sectionTypes = [...new Set(params.questions.map(question => question.type))]
+  const sections: MathSectionResult[] = sectionTypes.map(type => {
+    const sectionQuestions = questionResults.filter(item => item.question.type === type)
     return {
-      type: section.type,
-      label: section.label,
+      type,
+      label: sectionQuestions[0]?.question.sectionLabel ?? '',
       correctCount: sectionQuestions.filter(item => item.isCorrect).length,
       totalCount: sectionQuestions.length,
     }
   })
-
   const correctCount = questionResults.filter(item => item.isCorrect).length
 
   return {

@@ -11,11 +11,18 @@ export interface MathSectionConfig {
   count: number
 }
 
+export interface MathCalcCounts {
+  within20: number
+  tens: number
+  chain: number
+}
+
 export interface MathPaperConfig {
   title: string
   durationSeconds: number
   totalQuestions: number
   sections: MathSectionConfig[]
+  calcCounts: MathCalcCounts
 }
 
 interface MathQuestionBase {
@@ -101,4 +108,25 @@ export const mathPaperConfig: MathPaperConfig = {
     { type: 'fill', label: '二、填一填', count: 20 },
     { type: 'compare', label: '三、比大小', count: 10 },
   ],
+  calcCounts: {
+    within20: 35,
+    tens: 20,
+    chain: 15,
+  },
+}
+
+export const mathQuickConfig: MathPaperConfig = {
+  title: '每日口算快速练',
+  durationSeconds: 5 * 60,
+  totalQuestions: 20,
+  sections: [
+    { type: 'calc', label: '一、算一算', count: 14 },
+    { type: 'fill', label: '二、填一填', count: 4 },
+    { type: 'compare', label: '三、比大小', count: 2 },
+  ],
+  calcCounts: {
+    within20: 7,
+    tens: 4,
+    chain: 3,
+  },
 }

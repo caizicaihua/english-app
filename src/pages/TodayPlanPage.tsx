@@ -125,9 +125,15 @@ export default function TodayPlanPage() {
       id: 'math' as const,
       icon: '🧮',
       title: '数学口算',
-      description: '保持百以内计算手感，快速练模式将在后续里程碑接入。',
-      countLabel: '本周任务',
-      onOpen: () => navigate('/math'),
+      description: '用 20 道短练习保持百以内计算手感，做完自动记录。',
+      countLabel: '20 题 · 5 分钟',
+      onOpen: () => navigate('/math/practice', {
+        state: {
+          mode: 'quick',
+          title: '每日口算快速练',
+        },
+      }),
+      canMarkComplete: false,
     }] : []),
   ]
 

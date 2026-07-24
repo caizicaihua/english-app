@@ -24,6 +24,24 @@ export default function MathResultPage() {
 
   const wrongQuestions = attempt.questions.filter(item => !item.isCorrect)
   const accuracy = Math.round((attempt.correctCount / attempt.totalCount) * 100)
+  const retryMode = attempt.mode === 'quick' ? 'quick' : 'paper'
+  const retryLabel = attempt.mode === 'quick'
+    ? '再做 20 题'
+    : attempt.mode === 'review'
+      ? '继续错题练习'
+      : '再来一套'
+  const handleRetry = () => {
+    if (attempt.mode === 'review') {
+      navigate('/math/wrong-book')
+      return
+    }
+    navigate('/math/practice', {
+      state: {
+        mode: retryMode,
+        title: attempt.title,
+      },
+    })
+  }
 
   return (
     <div>
@@ -38,8 +56,10 @@ export default function MathResultPage() {
       <div className="bg-white rounded-2xl shadow-md p-5 mb-5">
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="rounded-xl bg-indigo-50 p-3">
-            <div className="text-xs text-gray-500">总得分</div>
-            <div className="text-3xl font-bold text-indigo-600 mt-1">{attempt.score}</div>
+            <div className="text-xs text-gray-500">答对题数</div>
+            <div className="text-2xl font-bold text-indigo-600 mt-1">
+              {attempt.score}/{attempt.totalCount}
+            </div>
           </div>
           <div className="rounded-xl bg-emerald-50 p-3">
             <div className="text-xs text-gray-500">答对</div>
@@ -87,10 +107,10 @@ export default function MathResultPage() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <button
-          onClick={() => navigate('/math/practice')}
+          onClick={handleRetry}
           className="rounded-xl bg-primary py-3 text-white font-bold active:scale-95 transition-transform"
         >
-          再来一套
+          {retryLabel}
         </button>
         <button
           onClick={() => navigate('/math/wrong-book')}

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { gradeCatalog, getTotalWords } from '../data/words'
+import { mathPaperConfig, mathQuickConfig } from '../data/math'
 import {
   getActiveStreak,
   getMathModeProgress,
@@ -15,6 +16,7 @@ export default function HomePage() {
   const progress = loadProgress()
   const mathProgress = loadMathProgress()
   const mathPaperProgress = getMathModeProgress(mathProgress, 'paper')
+  const mathQuickProgress = getMathModeProgress(mathProgress, 'quick')
   const bridgeSettings = loadSettings().bridgePlan
   const bridgeDailyPlan = buildDailyStudyPlan(progress, bridgeSettings)
   const bridgeTaskCount = getDailyTaskIds(bridgeDailyPlan).length
@@ -63,12 +65,18 @@ export default function HomePage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-4xl mb-2">🧮</div>
-            <div className="font-bold text-lg text-primary">一年级口算比赛</div>
-            <div className="text-xs text-gray-400 mt-1">100 题 · 15 分钟 · 口算训练</div>
+            <div className="font-bold text-lg text-primary">一年级数学练习</div>
+            <div className="text-xs text-gray-400 mt-1">每日 20 题 · 约 5 分钟</div>
           </div>
           <div className="text-right text-xs text-gray-500">
-            <div>历史最高 {mathPaperProgress.bestScore}</div>
-            <div className="mt-1">错题 {mathProgress.wrongQuestions.length} 题</div>
+            <div>
+              快速练最高 {mathQuickProgress.completedCount > 0
+                ? `${mathQuickProgress.bestScore}/${mathQuickConfig.totalQuestions}`
+                : '--'}
+            </div>
+            <div className="mt-1">
+              整卷最高 {mathPaperProgress.bestScore}/{mathPaperConfig.totalQuestions}
+            </div>
           </div>
         </div>
       </motion.div>

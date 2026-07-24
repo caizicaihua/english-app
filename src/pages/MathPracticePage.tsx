@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   mathPaperConfig,
+  mathQuickConfig,
   type MathPracticeMode,
   type MathQuestion,
   type MathQuestionType,
@@ -10,11 +11,15 @@ import {
 import { buildMathAttempt, formatCountdown, generateMathPaper } from '../utils/mathPaper'
 import {
   addMathWrongQuestions,
+  getLocalDateKey,
   loadMathProgress,
+  loadProgress,
   removeMathWrongQuestions,
   saveMathAttempt,
   saveMathProgress,
+  saveProgress,
 } from '../utils/storage'
+import { completeDailyTask } from '../utils/studyPlan'
 
 type PracticeLocationState = {
   reviewQuestions?: MathQuestion[]
@@ -58,17 +63,31 @@ function countAnsweredQuestions(questions: MathQuestion[], answers: Record<strin
   return questions.filter(question => (answers[question.id] ?? '').trim() !== '').length
 }
 
+function getModeLabel(mode: MathPracticeMode): string {
+  if (mode === 'quick') return '每日快速练'
+  if (mode === 'review') return '错题重练'
+  if (mode === 'focused') return '专项练习'
+  return '整卷训练'
+}
+
 export default function MathPracticePage() {
   const navigate = useNavigate()
   const location = useLocation()
   const state = (location.state ?? {}) as PracticeLocationState
   const reviewQuestions = state.reviewQuestions?.length ? state.reviewQuestions : null
-  const mode: MathPracticeMode = reviewQuestions ? 'review' : 'paper'
-  const title = state.title ?? (mode === 'review' ? '错题重练' : mathPaperConfig.title)
-  const [questions] = useState<MathQuestion[]>(() => reviewQuestions ?? generateMathPaper())
-  const durationSeconds = mode === 'paper'
-    ? mathPaperConfig.durationSeconds
-    : getReviewDuration(questions.length)
+  const mode: MathPracticeMode = reviewQuestions
+    ? 'review'
+    : state.mode === 'quick'
+      ? 'quick'
+      : 'paper'
+  const config = mode === 'quick' ? mathQuickConfig : mathPaperConfig
+  const title = state.title ?? (mode === 'review' ? '错题重练' : config.title)
+  const [questions] = useState<MathQuestion[]>(
+    () => reviewQuestions ?? generateMathPaper(config),
+  )
+  const durationSeconds = mode === 'review'
+    ? getReviewDuration(questions.length)
+    : config.durationSeconds
 
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [timeLeft, setTimeLeft] = useState(durationSeconds)
@@ -76,6 +95,7 @@ export default function MathPracticePage() {
     questions.find(question => question.type !== 'compare')?.id ?? null
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const hasSubmittedRef = useRef(false)
   const questionRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
@@ -84,7 +104,7 @@ export default function MathPracticePage() {
   const activeQuestion = questions.find(question => question.id === activeQuestionId) ?? null
   const isKeypadVisible = !!activeQuestion && activeQuestion.type !== 'compare'
 
-  const handleSubmit = useCallback(() => {
+  const submitAttempt = useCallback(() => {
     if (hasSubmittedRef.current) return
 
     hasSubmittedRef.current = true
@@ -100,7 +120,7 @@ export default function MathPracticePage() {
     })
 
     let progress = loadMathProgress()
-    progress = saveMathAttempt(progress, attempt, { updateBestScore: mode === 'paper' })
+    progress = saveMathAttempt(progress, attempt)
 
     const wrongQuestions = attempt.questions
       .filter(item => !item.isCorrect)
@@ -121,14 +141,33 @@ export default function MathPracticePage() {
     }
 
     saveMathProgress(progress)
+    if (mode === 'quick') {
+      const learningProgress = loadProgress()
+      const completedProgress = completeDailyTask(
+        learningProgress,
+        getLocalDateKey(),
+        'math',
+      )
+      if (completedProgress !== learningProgress) saveProgress(completedProgress)
+    }
     navigate('/math/result', { replace: true })
   }, [answers, durationSeconds, mode, navigate, questions, timeLeft, title])
+
+  const handleSubmitRequest = () => {
+    if (isSubmitting) return
+    if (answeredCount < questions.length) {
+      setActiveQuestionId(null)
+      setShowSubmitConfirm(true)
+      return
+    }
+    submitAttempt()
+  }
 
   useEffect(() => {
     if (hasSubmittedRef.current) return
     if (timeLeft <= 0) {
       const timeout = window.setTimeout(() => {
-        handleSubmit()
+        submitAttempt()
       }, 0)
 
       return () => window.clearTimeout(timeout)
@@ -139,7 +178,7 @@ export default function MathPracticePage() {
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [handleSubmit, timeLeft])
+  }, [submitAttempt, timeLeft])
 
   const handleDigitInput = (value: string) => {
     if (!activeQuestionId) return
@@ -197,10 +236,10 @@ export default function MathPracticePage() {
           </div>
           <div className="mt-3 flex items-center justify-between gap-3">
             <div className="text-xs text-gray-400">
-              当前模式：{mode === 'review' ? '错题重练' : '整卷训练'}
+              当前模式：{getModeLabel(mode)}
             </div>
             <button
-              onClick={handleSubmit}
+              onClick={handleSubmitRequest}
               disabled={isSubmitting}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
             >
@@ -310,6 +349,34 @@ export default function MathPracticePage() {
           </section>
         ))}
       </div>
+
+      {showSubmitConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-xs rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div className="text-4xl">📝</div>
+            <h3 className="mt-3 text-lg font-bold text-gray-800">还有题目没做完</h3>
+            <p className="mt-2 text-sm leading-6 text-gray-500">
+              还有 {questions.length - answeredCount} 题未作答，现在交卷会按错题计算。
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setShowSubmitConfirm(false)}
+                className="rounded-xl bg-gray-100 py-3 font-bold text-gray-600"
+              >
+                继续答题
+              </button>
+              <button
+                type="button"
+                onClick={submitAttempt}
+                className="rounded-xl bg-primary py-3 font-bold text-white"
+              >
+                确认交卷
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isKeypadVisible && (
         <motion.div
