@@ -15,6 +15,8 @@ import {
   SETTINGS_SCHEMA_VERSION,
   defaultBridgePlanSettings,
   type BridgePlanSettings,
+  type DailyStudyPlan,
+  type DailyTaskId,
   type DiagnosticDraft,
   type DiagnosticQuestionType,
   type DiagnosticResponse,
@@ -52,6 +54,7 @@ const studyTaskTypes: StudyTaskType[] = [
   'diagnostic',
   'math',
 ]
+const dailyTaskIds: DailyTaskId[] = ['review', 'verification', 'new_words', 'quiz', 'math']
 
 export interface ProgressData {
   schemaVersion: typeof PROGRESS_SCHEMA_VERSION
@@ -67,6 +70,7 @@ export interface ProgressData {
   diagnosticResults: DiagnosticResult[]
   diagnosticDraft: DiagnosticDraft | null
   studySessions: StudySession[]
+  dailyPlans: Record<string, DailyStudyPlan>
 }
 
 export interface AppSettings {
@@ -312,6 +316,38 @@ function normalizeStudySessions(value: unknown, now: Date): StudySession[] {
     .sort((first, second) => first.date.localeCompare(second.date))
 }
 
+function normalizeDailyStudyPlan(value: unknown): DailyStudyPlan | null {
+  if (!isRecord(value)) return null
+  const settingsSignature = toOptionalString(value.settingsSignature)
+  const generatedAt = toOptionalString(value.generatedAt)
+  if (!isLocalDateKey(value.date) || !settingsSignature || !generatedAt) return null
+
+  return {
+    date: value.date,
+    settingsSignature,
+    reviewWordIds: toStringArray(value.reviewWordIds),
+    verificationWordIds: toStringArray(value.verificationWordIds),
+    newWordIds: toStringArray(value.newWordIds),
+    quizQuestionCount: Math.min(10, toNonNegativeInteger(value.quizQuestionCount)),
+    includeMath: value.includeMath === true,
+    completedTaskIds: Array.isArray(value.completedTaskIds)
+      ? [...new Set(value.completedTaskIds.filter((item): item is DailyTaskId => (
+        dailyTaskIds.includes(item as DailyTaskId)
+      )))]
+      : [],
+    generatedAt,
+  }
+}
+
+function normalizeDailyStudyPlans(value: unknown): Record<string, DailyStudyPlan> {
+  if (!isRecord(value)) return {}
+
+  return Object.fromEntries(Object.entries(value).flatMap(([dateKey, item]) => {
+    const plan = normalizeDailyStudyPlan(item)
+    return plan && plan.date === dateKey ? [[dateKey, plan]] : []
+  }))
+}
+
 function getDefaultData(): ProgressData {
   return {
     schemaVersion: PROGRESS_SCHEMA_VERSION,
@@ -327,6 +363,7 @@ function getDefaultData(): ProgressData {
     diagnosticResults: [],
     diagnosticDraft: null,
     studySessions: [],
+    dailyPlans: {},
   }
 }
 
@@ -363,6 +400,7 @@ export function normalizeProgressData(value: unknown, now = new Date()): Progres
       : [],
     diagnosticDraft: normalizeDiagnosticDraft(value.diagnosticDraft),
     studySessions: normalizeStudySessions(value.studySessions, now),
+    dailyPlans: normalizeDailyStudyPlans(value.dailyPlans),
   }
 }
 

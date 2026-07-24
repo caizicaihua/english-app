@@ -6,13 +6,18 @@ import {
   getMathModeProgress,
   loadMathProgress,
   loadProgress,
+  loadSettings,
 } from '../utils/storage'
+import { buildDailyStudyPlan, getDailyTaskIds } from '../utils/studyPlan'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const progress = loadProgress()
   const mathProgress = loadMathProgress()
   const mathPaperProgress = getMathModeProgress(mathProgress, 'paper')
+  const bridgeSettings = loadSettings().bridgePlan
+  const bridgeDailyPlan = buildDailyStudyPlan(progress, bridgeSettings)
+  const bridgeTaskCount = getDailyTaskIds(bridgeDailyPlan).length
   const activeStreak = getActiveStreak(progress)
 
   return (
@@ -23,6 +28,31 @@ export default function HomePage() {
           已学 {progress.learnedWords.length} 个单词 | 连续 {activeStreak} 天
         </p>
       </div>
+
+      <motion.button
+        type="button"
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        onClick={() => navigate(bridgeSettings.enabled ? '/bridge' : '/bridge/setup')}
+        className="mb-4 w-full cursor-pointer rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 p-5 text-left shadow-md transition-shadow hover:shadow-lg active:scale-95"
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="mb-2 text-4xl">🌻</div>
+            <div className="text-lg font-bold text-amber-800">一升二暑假衔接</div>
+            <div className="mt-1 text-xs text-amber-700">
+              {bridgeSettings.enabled
+                ? bridgeTaskCount > 0
+                  ? `今日 ${bridgeTaskCount} 项 · 约 ${bridgeSettings.dailyMinutes} 分钟`
+                  : '今天是休息日，不用补做'
+                : '每天 15 分钟，巩固一年级并轻量预习'}
+            </div>
+          </div>
+          <div className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-bold text-amber-700">
+            {bridgeSettings.enabled ? '进入计划' : '开始设置'}
+          </div>
+        </div>
+      </motion.button>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}

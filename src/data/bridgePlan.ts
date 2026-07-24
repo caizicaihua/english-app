@@ -95,6 +95,25 @@ export interface StudySession {
   durationSeconds: number
 }
 
+export type DailyTaskId =
+  | 'review'
+  | 'verification'
+  | 'new_words'
+  | 'quiz'
+  | 'math'
+
+export interface DailyStudyPlan {
+  date: string
+  settingsSignature: string
+  reviewWordIds: string[]
+  verificationWordIds: string[]
+  newWordIds: string[]
+  quizQuestionCount: number
+  includeMath: boolean
+  completedTaskIds: DailyTaskId[]
+  generatedAt: string
+}
+
 export const defaultBridgePlanSettings: BridgePlanSettings = {
   enabled: false,
   startDate: '',

@@ -12,6 +12,9 @@ import MathHomePage from './pages/MathHomePage'
 import MathPracticePage from './pages/MathPracticePage'
 import MathResultPage from './pages/MathResultPage'
 import MathWrongBookPage from './pages/MathWrongBookPage'
+import BridgeHomePage from './pages/BridgeHomePage'
+import BridgeSetupPage from './pages/BridgeSetupPage'
+import TodayPlanPage from './pages/TodayPlanPage'
 
 const router = createHashRouter([
   {
@@ -31,6 +34,9 @@ const router = createHashRouter([
       { path: 'math/practice', element: <MathPracticePage /> },
       { path: 'math/result', element: <MathResultPage /> },
       { path: 'math/wrong-book', element: <MathWrongBookPage /> },
+      { path: 'bridge', element: <BridgeHomePage /> },
+      { path: 'bridge/setup', element: <BridgeSetupPage /> },
+      { path: 'bridge/today', element: <TodayPlanPage /> },
     ],
   },
 ])

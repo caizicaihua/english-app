@@ -33,6 +33,7 @@ function createProgress(overrides: Partial<ProgressData> = {}): ProgressData {
     diagnosticResults: [],
     diagnosticDraft: null,
     studySessions: [],
+    dailyPlans: {},
     ...overrides,
   }
 }
@@ -127,6 +128,7 @@ describe('storage migrations', () => {
       diagnosticResults: [],
       diagnosticDraft: null,
       studySessions: [],
+      dailyPlans: {},
     }, new Date(2026, 6, 24, 9))
 
     expect(progress.completedUnits).toEqual({ '1-1': 3 })
