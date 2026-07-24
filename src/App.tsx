@@ -17,6 +17,7 @@ import BridgeSetupPage from './pages/BridgeSetupPage'
 import TodayPlanPage from './pages/TodayPlanPage'
 import DiagnosticPage from './pages/DiagnosticPage'
 import DiagnosticResultPage from './pages/DiagnosticResultPage'
+import ReviewQueuePage from './pages/ReviewQueuePage'
 
 const router = createHashRouter([
   {
@@ -28,7 +29,7 @@ const router = createHashRouter([
       { path: 'grade/:gradeId/unit/:unitId', element: <LearnPage /> },
       { path: 'grade/:gradeId/quiz/:unitId', element: <QuizPage /> },
       { path: 'wrong-book', element: <WrongBookPage /> },
-      { path: 'wrong-book/quiz', element: <QuizPage reviewMode /> },
+      { path: 'wrong-book/quiz', element: <QuizPage practiceMode="wrong-book" /> },
       { path: 'stats', element: <StatsPage /> },
       { path: 'achievements', element: <AchievementsPage /> },
       { path: 'settings', element: <SettingsPage /> },
@@ -41,6 +42,10 @@ const router = createHashRouter([
       { path: 'bridge/today', element: <TodayPlanPage /> },
       { path: 'bridge/diagnostic', element: <DiagnosticPage /> },
       { path: 'bridge/diagnostic/result', element: <DiagnosticResultPage /> },
+      { path: 'bridge/review', element: <ReviewQueuePage mode="review" /> },
+      { path: 'bridge/review/quiz', element: <QuizPage practiceMode="daily-review" /> },
+      { path: 'bridge/verification', element: <ReviewQueuePage mode="verification" /> },
+      { path: 'bridge/verification/quiz', element: <QuizPage practiceMode="verification" /> },
     ],
   },
 ])

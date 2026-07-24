@@ -90,7 +90,8 @@ export default function TodayPlanPage() {
       title: '到期与薄弱复习',
       description: '先复习已经接触过的词，答对达标后会自动降低频率。',
       countLabel: `${plan.reviewWordIds.length} 个词`,
-      onOpen: () => navigate(routeForWordIds(plan.reviewWordIds, 'learn')),
+      onOpen: () => navigate('/bridge/review'),
+      canMarkComplete: false,
     }] : []),
     ...(plan.verificationWordIds.length > 0 ? [{
       id: 'verification' as const,
@@ -98,7 +99,8 @@ export default function TodayPlanPage() {
       title: '弱单元小验证',
       description: '这些词还没有被诊断过，做完以后才判断是否需要继续复习。',
       countLabel: `${plan.verificationWordIds.length} 个词`,
-      onOpen: () => navigate(routeForWordIds(plan.verificationWordIds, 'learn')),
+      onOpen: () => navigate('/bridge/verification'),
+      canMarkComplete: false,
     }] : []),
     ...(plan.newWordIds.length > 0 ? [{
       id: 'new_words' as const,

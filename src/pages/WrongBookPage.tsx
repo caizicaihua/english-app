@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { loadWordsByIds, type Word } from '../data/words'
 import { loadProgress, saveProgress, removeWrongWord } from '../utils/storage'
 import { speak } from '../utils/speech'
+import MasteryBadge from '../components/MasteryBadge'
 
 export default function WrongBookPage() {
   const navigate = useNavigate()
@@ -74,6 +75,9 @@ export default function WrongBookPage() {
                   <div>
                     <div className="font-bold text-gray-800">{word.en}</div>
                     <div className="text-sm text-gray-400">{word.zh}</div>
+                    <div className="mt-1.5">
+                      <MasteryBadge state={progress.wordMastery[word.id]} />
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

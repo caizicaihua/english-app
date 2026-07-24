@@ -65,7 +65,7 @@ export default function DailyTaskCard({
             ? '已完成'
             : canMarkComplete
               ? '完成打卡'
-              : '完成小节后记录'}
+              : '完成后自动记录'}
         </button>
       </div>
     </motion.div>

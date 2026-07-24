@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Unit, Word } from '../data/words'
-import { generateQuestions } from '../utils/quiz'
+import { generateQuestions, generateWordCheckQuestions } from '../utils/quiz'
 
 function createWord(id: string, en: string): Word {
   return {
@@ -85,5 +85,26 @@ describe('English quiz generation', () => {
     const questions = generateQuestions(unit, [word])
 
     expect(questions.some(question => question.type === 'sentence')).toBe(false)
+  })
+
+  it('creates one focused check for every queued word', () => {
+    const words = [
+      createWord('1-1-1', 'apple'),
+      createWord('1-1-2', 'ball'),
+      createWord('1-1-3', 'cat'),
+    ]
+    const pool = [
+      ...words,
+      createWord('1-1-4', 'dog'),
+      createWord('1-1-5', 'egg'),
+    ]
+
+    const questions = generateWordCheckQuestions(words, pool)
+
+    expect(questions).toHaveLength(words.length)
+    expect(questions.map(question => question.word.id)).toEqual(
+      words.map(word => word.id),
+    )
+    expect(new Set(questions.map(question => question.word.id)).size).toBe(words.length)
   })
 })

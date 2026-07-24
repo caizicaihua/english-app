@@ -87,6 +87,44 @@ function buildDialoguePrompts(unit: Unit): Array<{ word: Word; prompt: DialogueP
   return prompts
 }
 
+function createSpellingQuestion(word: Word): Question {
+  const letters = word.en.split('')
+  const letterIndices = letters
+    .map((letter, letterIndex) => ({ letter, index: letterIndex }))
+    .filter(item => /^[a-z]$/i.test(item.letter))
+    .map(item => item.index)
+  const numHidden = Math.min(Math.max(1, Math.ceil(letterIndices.length * 0.4)), 3)
+  const indices = shuffle(letterIndices).slice(0, numHidden).sort((a, b) => a - b)
+
+  return {
+    type: 'spell',
+    word,
+    correctAnswer: word.en,
+    displayLetters: letters.map((letter, index) => indices.includes(index) ? '_' : letter),
+    hiddenIndices: indices,
+  }
+}
+
+export function generateWordCheckQuestions(
+  words: Word[],
+  allGradeWords: Word[],
+): Question[] {
+  const pool = allGradeWords.length >= 4 ? allGradeWords : words
+
+  return words.map((word, index) => {
+    const type = (['zh2en', 'listen', 'spell'] as const)[index % 3]
+    if (type === 'spell') return createSpellingQuestion(word)
+
+    const distractors = pickDistractors(word, pool, 3)
+    return {
+      type,
+      word,
+      options: shuffle([word, ...distractors]).map(item => item.en),
+      correctAnswer: word.en,
+    }
+  })
+}
+
 export function generateQuestions(unit: Unit, allGradeWords: Word[]): Question[] {
   const words = unit.words
   if (words.length === 0) return []
@@ -145,21 +183,7 @@ export function generateQuestions(unit: Unit, allGradeWords: Word[]): Question[]
         dialoguePrompt: currentDialogue.prompt,
       })
     } else if (type === 'spell') {
-      const letters = word.en.split('')
-      const letterIndices = letters
-        .map((letter, letterIndex) => ({ letter, index: letterIndex }))
-        .filter(item => /^[a-z]$/i.test(item.letter))
-        .map(item => item.index)
-      const numHidden = Math.min(Math.max(1, Math.ceil(letterIndices.length * 0.4)), 3)
-      const indices = shuffle(letterIndices).slice(0, numHidden).sort((a, b) => a - b)
-      const display = letters.map((letter, letterIndex) => indices.includes(letterIndex) ? '_' : letter)
-      questions.push({
-        type: 'spell',
-        word,
-        correctAnswer: word.en,
-        displayLetters: display,
-        hiddenIndices: indices,
-      })
+      questions.push(createSpellingQuestion(word))
     } else {
       const distractors = pickDistractors(word, pool, 3)
       questions.push({

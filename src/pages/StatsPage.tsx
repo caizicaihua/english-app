@@ -7,6 +7,10 @@ export default function StatsPage() {
   const today = getLocalDateKey()
   const todayCount = progress.dailyWords[today] || 0
   const activeStreak = getActiveStreak(progress)
+  const masteryStates = Object.values(progress.wordMastery)
+  const encounteredCount = masteryStates.filter(state => state.level > 0).length
+  const masteredCount = masteryStates.filter(state => state.level >= 3).length
+  const reinforcingCount = masteryStates.filter(state => state.level > 0 && state.level < 3).length
 
   return (
     <div>
@@ -18,9 +22,9 @@ export default function StatsPage() {
       <div className="grid grid-cols-2 gap-3 mb-6">
         {[
           { label: '今日学习', value: todayCount, emoji: '📝', color: 'text-primary' },
-          { label: '累计单词', value: progress.learnedWords.length, emoji: '📚', color: 'text-success' },
+          { label: '累计接触', value: encounteredCount, emoji: '📚', color: 'text-success' },
           { label: '连续天数', value: activeStreak, emoji: '🔥', color: 'text-warning' },
-          { label: '错题待复习', value: progress.wrongWords.length, emoji: '📕', color: 'text-danger' },
+          { label: '基本掌握', value: masteredCount, emoji: '✅', color: 'text-emerald-600' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -36,13 +40,42 @@ export default function StatsPage() {
         ))}
       </div>
 
+      <div className="mb-6 rounded-xl bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-bold text-gray-700">当前掌握状态</span>
+          <span className="text-gray-400">仍需巩固 {reinforcingCount} 个</span>
+        </div>
+        <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-gray-100">
+          <div
+            className="bg-emerald-400"
+            style={{
+              width: encounteredCount > 0
+                ? `${Math.round((masteredCount / encounteredCount) * 100)}%`
+                : '0%',
+            }}
+          />
+          <div
+            className="bg-orange-300"
+            style={{
+              width: encounteredCount > 0
+                ? `${Math.round((reinforcingCount / encounteredCount) * 100)}%`
+                : '0%',
+            }}
+          />
+        </div>
+        <div className="mt-2 flex gap-4 text-xs text-gray-500">
+          <span>🟢 基本/熟练掌握 {masteredCount}</span>
+          <span>🟠 初学/需巩固 {reinforcingCount}</span>
+        </div>
+      </div>
+
       <h3 className="font-bold text-gray-700 mb-3">各年级进度</h3>
       <div className="space-y-3">
         {gradeCatalog.map(grade => {
           const totalWords = getTotalWords(grade)
           const learned = grade.units
             .flatMap(unit => unit.wordIds)
-            .filter(id => progress.learnedWords.includes(id)).length
+            .filter(id => (progress.wordMastery[id]?.level ?? 0) > 0).length
           const percent = totalWords > 0 ? Math.round((learned / totalWords) * 100) : 0
           const totalStars = grade.units.reduce(
             (s, u) => s + (progress.completedUnits[`${grade.id}-${u.id}`] || 0), 0

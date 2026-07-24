@@ -30,6 +30,7 @@ export interface UnitFollowUpPlan {
   unitKey: string
   sourceDiagnosticId: string
   reason: 'review' | 'focus'
+  candidateWordIds: string[]
   pendingWordIds: string[]
   assessedWordIds: string[]
   correctCount: number

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { loadGrade, type Grade } from '../data/words'
 import { loadProgress, loadSettings, saveProgress, saveSettings, markWordLearned } from '../utils/storage'
 import { getExampleSpeechRate, speak, speakDialogue, speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
+import MasteryBadge from '../components/MasteryBadge'
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -80,6 +81,7 @@ export default function LearnPage() {
 
   const words = unit.words
   const word = words[currentIndex]
+  const wordState = loadProgress().wordMastery[word.id]
   const dialogue = unit.dialogues?.find(item =>
     item.lines.some(line => containsWord(line.en, word.en))
   )
@@ -207,6 +209,9 @@ export default function LearnPage() {
                 >
                   <div className="text-7xl mb-4">{word.emoji}</div>
                   <div className="text-3xl font-bold text-gray-800">{word.en}</div>
+                  <div className="mt-3">
+                    <MasteryBadge state={wordState} />
+                  </div>
                   <p className="text-xs text-gray-300 mt-4">点击卡片查看释义</p>
                 </div>
 
@@ -224,6 +229,9 @@ export default function LearnPage() {
                     {word.zh}
                   </div>
                   <div className="text-lg text-gray-500 mt-2">{word.en}</div>
+                  <div className="mt-3">
+                    <MasteryBadge state={wordState} />
+                  </div>
                 </div>
               </motion.div>
             </div>

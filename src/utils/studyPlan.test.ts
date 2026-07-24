@@ -7,7 +7,9 @@ import {
 } from '../data/bridgePlan'
 import {
   buildDailyStudyPlan,
+  getActiveDailyQueueWordIds,
   getOrCreateDailyStudyPlan,
+  recordUnitVerification,
   saveDailyStudyPlan,
 } from './studyPlan'
 import { normalizeProgressData, type ProgressData } from './storage'
@@ -87,6 +89,7 @@ describe('daily study plan', () => {
       unitKey: '1-2',
       sourceDiagnosticId: 'diagnostic-1',
       reason: 'focus',
+      candidateWordIds: ['1-2-1', '1-2-2', '1-2-3', '1-2-4'],
       pendingWordIds: ['1-2-1', '1-2-2', '1-2-3', '1-2-4'],
       assessedWordIds: [],
       correctCount: 0,
@@ -175,5 +178,63 @@ describe('daily study plan', () => {
     expect(plan.quizQuestionCount).toBe(0)
     expect(plan.newWordIds).toEqual([])
     expect(plan.includeMath).toBe(false)
+  })
+
+  it('updates mastery and expands a low-accuracy verification plan', () => {
+    let progress = createProgress({
+      unitFollowUpPlans: [{
+        unitKey: '1-1',
+        sourceDiagnosticId: 'diagnostic-1',
+        reason: 'review',
+        candidateWordIds: ['1-1-1', '1-1-2', '1-1-3', '1-1-4', '1-1-5'],
+        pendingWordIds: ['1-1-1', '1-1-2', '1-1-3'],
+        assessedWordIds: [],
+        correctCount: 0,
+        createdAt: '2026-07-24T08:00:00.000Z',
+      }],
+    })
+
+    progress = recordUnitVerification(progress, '1-1-1', true, date)
+    progress = recordUnitVerification(progress, '1-1-2', false, date)
+    progress = recordUnitVerification(progress, '1-1-3', false, date)
+
+    expect(progress.wordMastery['1-1-2']).toMatchObject({
+      level: 1,
+      wrongCount: 1,
+    })
+    expect(progress.unitFollowUpPlans[0].pendingWordIds).toHaveLength(2)
+    expect(progress.unitFollowUpPlans[0].pendingWordIds).toEqual(
+      expect.arrayContaining(['1-1-4', '1-1-5']),
+    )
+    expect(progress.unitFollowUpPlans[0].completedAt).toBeUndefined()
+  })
+
+  it('removes answered items from the current queue without changing the saved plan', () => {
+    const plan = {
+      ...buildDailyStudyPlan(
+        createProgress({
+          wordMastery: {
+            '1-1-1': createWordState(),
+          },
+        }),
+        createSettings(),
+        date,
+      ),
+      reviewWordIds: ['1-1-1'],
+    }
+    const progress = createProgress({
+      wordMastery: {
+        '1-1-1': createWordState(),
+      },
+      dailyPlans: {
+        [plan.date]: plan,
+      },
+    })
+
+    expect(getActiveDailyQueueWordIds(progress, plan, 'review')).toEqual(['1-1-1'])
+
+    const answered = recordUnitVerification(progress, '1-1-1', true, date)
+    expect(getActiveDailyQueueWordIds(answered, plan, 'review')).toEqual([])
+    expect(plan.reviewWordIds).toEqual(['1-1-1'])
   })
 })

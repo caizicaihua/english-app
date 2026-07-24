@@ -190,6 +190,7 @@ export function createUnitFollowUpPlan(params: {
     unitKey: params.unitKey,
     sourceDiagnosticId: params.sourceDiagnosticId,
     reason: params.reason,
+    candidateWordIds: candidates,
     pendingWordIds: selectVerificationWords(
       params.sourceDiagnosticId,
       params.unitKey,
@@ -206,7 +207,6 @@ export function recordUnitFollowUpResult(params: {
   plan: UnitFollowUpPlan
   wordId: string
   isCorrect: boolean
-  remainingUnitWordIds: string[]
   answeredAt?: Date
 }): UnitFollowUpPlan {
   if (!params.plan.pendingWordIds.includes(params.wordId)) return params.plan
@@ -219,7 +219,7 @@ export function recordUnitFollowUpResult(params: {
   if (pendingWordIds.length === 0) {
     const accuracy = assessedWordIds.length === 0 ? 1 : correctCount / assessedWordIds.length
     const assessed = new Set(assessedWordIds)
-    const remaining = params.remainingUnitWordIds.filter(wordId => !assessed.has(wordId))
+    const remaining = params.plan.candidateWordIds.filter(wordId => !assessed.has(wordId))
 
     if (accuracy < 0.8 && remaining.length > 0) {
       pendingWordIds = selectVerificationWords(

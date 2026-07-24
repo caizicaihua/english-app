@@ -7,8 +7,8 @@ import type {
 } from '../data/bridgePlan'
 import { gradeCatalog } from '../data/words'
 import type { ProgressData } from './storage'
-import { addLocalDays } from './mastery'
-import { getLocalDateKey } from './storage'
+import { addLocalDays, recordUnitFollowUpResult } from './mastery'
+import { getLocalDateKey, updateWordMastery } from './storage'
 
 interface ReinforcementCandidate {
   wordId: string
@@ -267,6 +267,29 @@ export function getDailyTaskIds(plan: DailyStudyPlan): DailyTaskId[] {
   ]
 }
 
+export function getActiveDailyQueueWordIds(
+  progress: ProgressData,
+  plan: DailyStudyPlan,
+  taskId: 'review' | 'verification',
+): string[] {
+  if (plan.completedTaskIds.includes(taskId)) return []
+
+  if (taskId === 'verification') {
+    const activeWordIds = new Set(progress.unitFollowUpPlans.flatMap(followUpPlan => (
+      followUpPlan.completedAt ? [] : followUpPlan.pendingWordIds
+    )))
+    return plan.verificationWordIds.filter(wordId => activeWordIds.has(wordId))
+  }
+
+  return plan.reviewWordIds.filter(wordId => {
+    const state = progress.wordMastery[wordId]
+    return !!state && (
+      hasPrioritySignal(state)
+      || (!!state.nextReviewDate && state.nextReviewDate <= plan.date)
+    )
+  })
+}
+
 export function getOrCreateDailyStudyPlan(
   progress: ProgressData,
   settings: BridgePlanSettings,
@@ -311,6 +334,35 @@ export function completeDailyTask(
     ...plan,
     completedTaskIds: [...plan.completedTaskIds, taskId],
   })
+}
+
+export function recordUnitVerification(
+  progress: ProgressData,
+  wordId: string,
+  isCorrect: boolean,
+  date = new Date(),
+): ProgressData {
+  const updated = updateWordMastery(
+    progress,
+    wordId,
+    isCorrect,
+    'unit_verification',
+    date,
+  )
+
+  return {
+    ...updated,
+    unitFollowUpPlans: updated.unitFollowUpPlans.map(plan => (
+      plan.pendingWordIds.includes(wordId)
+        ? recordUnitFollowUpResult({
+          plan,
+          wordId,
+          isCorrect,
+          answeredAt: date,
+        })
+        : plan
+    )),
+  }
 }
 
 export function getBridgePlanDateRange(settings: BridgePlanSettings): {

@@ -197,6 +197,12 @@ function normalizeUnitFollowUpPlan(value: unknown): UnitFollowUpPlan | null {
     unitKey,
     sourceDiagnosticId,
     reason,
+    candidateWordIds: toStringArray(value.candidateWordIds).length > 0
+      ? toStringArray(value.candidateWordIds)
+      : [...new Set([
+        ...toStringArray(value.pendingWordIds),
+        ...toStringArray(value.assessedWordIds),
+      ])],
     pendingWordIds: toStringArray(value.pendingWordIds),
     assessedWordIds: toStringArray(value.assessedWordIds),
     correctCount: toNonNegativeInteger(value.correctCount),
@@ -442,20 +448,24 @@ export function normalizeProgressData(value: unknown, now = new Date()): Progres
   const wrongWords = toStringArray(value.wrongWords)
   const currentWordMastery = normalizeWordMastery(value.wordMastery)
   const migratedWordMastery = migrateLegacyWordStates(learnedWords, wrongWords, now)
+  const wordMastery = {
+    ...migratedWordMastery,
+    ...currentWordMastery,
+  }
+  const encounteredWordIds = Object.entries(wordMastery)
+    .filter(([, state]) => state.level > 0)
+    .map(([wordId]) => wordId)
 
   return {
     schemaVersion: PROGRESS_SCHEMA_VERSION,
     completedUnits: normalizeNumberRecord(value.completedUnits, 1, 3),
-    learnedWords,
+    learnedWords: [...new Set([...learnedWords, ...encounteredWordIds])],
     wrongWords,
     dailyWords: normalizeNumberRecord(value.dailyWords, 0),
     streak: toNonNegativeInteger(value.streak),
     lastStudyDate: isLocalDateKey(value.lastStudyDate) ? value.lastStudyDate : '',
     achievements: toStringArray(value.achievements),
-    wordMastery: {
-      ...migratedWordMastery,
-      ...currentWordMastery,
-    },
+    wordMastery,
     unitFollowUpPlans: Array.isArray(value.unitFollowUpPlans)
       ? value.unitFollowUpPlans
         .map(normalizeUnitFollowUpPlan)
@@ -814,6 +824,9 @@ export function updateWordMastery(
 
   return {
     ...data,
+    learnedWords: data.learnedWords.includes(wordId)
+      ? data.learnedWords
+      : [...data.learnedWords, wordId],
     wrongWords,
     wordMastery: {
       ...data.wordMastery,

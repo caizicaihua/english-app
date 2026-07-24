@@ -105,6 +105,7 @@ describe('unit follow-up plans', () => {
     const repeated = createUnitFollowUpPlan(params)
 
     expect(first.pendingWordIds).toHaveLength(5)
+    expect(first.candidateWordIds).toHaveLength(8)
     expect(first.pendingWordIds).toEqual(repeated.pendingWordIds)
     expect(first.pendingWordIds).not.toContain('1-1-1')
     expect(first.pendingWordIds).not.toContain('1-1-2')
@@ -126,7 +127,6 @@ describe('unit follow-up plans', () => {
         plan,
         wordId,
         isCorrect: index === 0,
-        remainingUnitWordIds: unitWordIds.filter(id => !['1-1-1', '1-1-2'].includes(id)),
         answeredAt: new Date(2026, 6, 25, 9 + index),
       })
     })

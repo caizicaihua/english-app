@@ -2,8 +2,28 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { loadGrade, loadWordsByIds, type Grade, type Unit, type Word } from '../data/words'
-import { generateQuestions, shuffle, type Question } from '../utils/quiz'
-import { loadProgress, saveProgress, completeUnit, addWrongWord, recordStudyActivity } from '../utils/storage'
+import {
+  generateQuestions,
+  generateWordCheckQuestions,
+  shuffle,
+  type Question,
+} from '../utils/quiz'
+import { applyQuizAnswer, type QuizProgressSource } from '../utils/quizProgress'
+import {
+  loadProgress,
+  loadSettings,
+  saveProgress,
+  completeUnit,
+  getLocalDateKey,
+  recordStudyActivity,
+} from '../utils/storage'
+import {
+  completeDailyTask,
+  getActiveDailyQueueWordIds,
+  getOrCreateDailyStudyPlan,
+  saveDailyStudyPlan,
+} from '../utils/studyPlan'
+import type { DailyTaskId, StudyTaskType } from '../data/bridgePlan'
 import { speak } from '../utils/speech'
 import StarRating from '../components/StarRating'
 
@@ -293,13 +313,23 @@ function SpellQuestion({ question, onAnswer, gradeColor }: {
 
 // --- Result Screen ---
 
-function ResultScreen({ score, total, stars, gradeColor, title = '闯关完成！', onRetry, onBack }: {
+function ResultScreen({
+  score,
+  total,
+  correctCount,
+  stars,
+  gradeColor,
+  title = '闯关完成！',
+  onRetry,
+  onBack,
+}: {
   score: number
   total: number
+  correctCount: number
   stars: number
   gradeColor: string
   title?: string
-  onRetry: () => void
+  onRetry?: () => void
   onBack: () => void
 }) {
   return (
@@ -324,17 +354,19 @@ function ResultScreen({ score, total, stars, gradeColor, title = '闯关完成�
         <StarRating stars={stars} size="text-2xl" />
       </div>
       <div className="text-gray-500 mb-6">
-        答对 <span className="text-green-500 font-bold">{Math.round(score / 10)}</span> 题，
-        答错 <span className="text-red-500 font-bold">{total - Math.round(score / 10)}</span> 题
+        答对 <span className="text-green-500 font-bold">{correctCount}</span> 题，
+        答错 <span className="text-red-500 font-bold">{total - correctCount}</span> 题
       </div>
       <div className="flex gap-3 justify-center">
-        <button
-          onClick={onRetry}
-          className="px-6 py-3 rounded-xl text-white font-bold shadow-md active:scale-95 transition-transform"
-          style={{ backgroundColor: gradeColor }}
-        >
-          🔄 再来一次
-        </button>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-6 py-3 rounded-xl text-white font-bold shadow-md active:scale-95 transition-transform"
+            style={{ backgroundColor: gradeColor }}
+          >
+            🔄 再来一次
+          </button>
+        )}
         <button
           onClick={onBack}
           className="px-6 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold active:scale-95 transition-transform"
@@ -349,41 +381,127 @@ function ResultScreen({ score, total, stars, gradeColor, title = '闯关完成�
 // --- Main Quiz Page ---
 
 interface QuizPageProps {
-  reviewMode?: boolean
+  practiceMode?: 'wrong-book' | 'daily-review' | 'verification'
 }
 
-export default function QuizPage({ reviewMode = false }: QuizPageProps) {
+interface PracticeConfig {
+  name: string
+  nameZh: string
+  color: string
+  emoji: string
+  emptyTitle: string
+  resultTitle: string
+  backPath: string
+  source: QuizProgressSource
+  dailyTaskId?: DailyTaskId
+  studyTaskType: StudyTaskType
+}
+
+const practiceConfigs: Record<NonNullable<QuizPageProps['practiceMode']>, PracticeConfig> = {
+  'wrong-book': {
+    name: 'Wrong Book Review',
+    nameZh: '错题重练',
+    color: '#6366f1',
+    emoji: '📕',
+    emptyTitle: '错题本已经清空',
+    resultTitle: '错题重练完成！',
+    backPath: '/wrong-book',
+    source: 'review',
+    studyTaskType: 'review',
+  },
+  'daily-review': {
+    name: 'Daily Review',
+    nameZh: '到期与薄弱复习',
+    color: '#0f9f6e',
+    emoji: '🔁',
+    emptyTitle: '今天的复习已经完成',
+    resultTitle: '今日复习完成！',
+    backPath: '/bridge/review',
+    source: 'review',
+    dailyTaskId: 'review',
+    studyTaskType: 'review',
+  },
+  verification: {
+    name: 'Unit Verification',
+    nameZh: '弱单元小验证',
+    color: '#d97706',
+    emoji: '🔎',
+    emptyTitle: '今天没有待验证单词',
+    resultTitle: '小验证完成！',
+    backPath: '/bridge/verification',
+    source: 'unit_verification',
+    dailyTaskId: 'verification',
+    studyTaskType: 'verification',
+  },
+}
+
+function getPracticeWordIds(
+  practiceMode: NonNullable<QuizPageProps['practiceMode']>,
+): string[] {
+  const progress = loadProgress()
+  if (practiceMode === 'wrong-book') return progress.wrongWords
+
+  const plan = getOrCreateDailyStudyPlan(progress, loadSettings().bridgePlan)
+  if (progress.dailyPlans[plan.date] !== plan) {
+    saveProgress(saveDailyStudyPlan(progress, plan))
+  }
+
+  return getActiveDailyQueueWordIds(
+    progress,
+    plan,
+    practiceMode === 'daily-review' ? 'review' : 'verification',
+  )
+}
+
+export default function QuizPage({ practiceMode }: QuizPageProps) {
   const { gradeId, unitId } = useParams()
   const navigate = useNavigate()
+  const practiceConfig = practiceMode ? practiceConfigs[practiceMode] : null
   const [grade, setGrade] = useState<Grade | null>(null)
   const [reviewPool, setReviewPool] = useState<Word[]>([])
   const [loading, setLoading] = useState(true)
   const [retryKey, setRetryKey] = useState(0)
+  const [currentQ, setCurrentQ] = useState(0)
+  const [correctCount, setCorrectCount] = useState(0)
+  const [finished, setFinished] = useState(false)
+  const [result, setResult] = useState<{
+    score: number
+    stars: number
+    correctCount: number
+  } | null>(null)
+  const quizStartedAt = useRef(0)
 
   useEffect(() => {
     let active = true
+    quizStartedAt.current = Date.now()
 
-    if (reviewMode) {
-      const wrongWordIds = loadProgress().wrongWords
+    if (practiceMode && practiceConfig) {
+      const wordIds = getPracticeWordIds(practiceMode)
+      const relevantGradeIds = [...new Set(wordIds.map(wordId => Number(wordId.split('-')[0])))]
+        .filter(grade => Number.isInteger(grade) && grade >= 1 && grade <= 6)
 
       Promise.all([
-        loadWordsByIds(wrongWordIds),
-        Promise.all([1, 2, 3, 4, 5, 6].map(id => loadGrade(id))),
-      ]).then(([wrongWords, loadedGrades]) => {
+        loadWordsByIds(wordIds),
+        Promise.all(relevantGradeIds.map(id => loadGrade(id))),
+      ]).then(([practiceWords, loadedGrades]) => {
         if (!active) return
+        setCurrentQ(0)
+        setCorrectCount(0)
+        setFinished(false)
+        setResult(null)
 
         const reviewUnit: Unit = {
           id: 0,
-          name: 'Wrong Book Review',
-          nameZh: '错题重练',
-          words: wrongWords,
+          name: practiceConfig.name,
+          nameZh: practiceConfig.nameZh,
+          words: practiceWords,
         }
 
         setGrade({
           id: 0,
-          name: '错题重练',
-          color: '#6366f1',
-          emoji: '📕',
+          name: practiceConfig.nameZh,
+          color: practiceConfig.color,
+          emoji: practiceConfig.emoji,
           units: [reviewUnit],
         })
         setReviewPool(loadedGrades.flatMap(item => item?.units.flatMap(unit => unit.words) ?? []))
@@ -397,6 +515,10 @@ export default function QuizPage({ reviewMode = false }: QuizPageProps) {
 
     loadGrade(Number(gradeId)).then(data => {
       if (!active) return
+      setCurrentQ(0)
+      setCorrectCount(0)
+      setFinished(false)
+      setResult(null)
       setGrade(data ?? null)
       setReviewPool([])
       setLoading(false)
@@ -405,88 +527,111 @@ export default function QuizPage({ reviewMode = false }: QuizPageProps) {
     return () => {
       active = false
     }
-  }, [gradeId, reviewMode, unitId])
+  }, [gradeId, practiceConfig, practiceMode, unitId])
 
-  const unit = grade?.units.find(u => u.id === (reviewMode ? 0 : Number(unitId)))
+  const unit = grade?.units.find(u => u.id === (practiceMode ? 0 : Number(unitId)))
 
   const allGradeWords = useMemo(
-    () => reviewMode ? reviewPool : grade?.units.flatMap(u => u.words) ?? [],
-    [grade, reviewMode, reviewPool]
+    () => practiceMode ? reviewPool : grade?.units.flatMap(u => u.words) ?? [],
+    [grade, practiceMode, reviewPool]
   )
 
   const questions = useMemo(
     () => {
       void retryKey
-      return unit ? generateQuestions(unit, allGradeWords) : []
+      if (!unit) return []
+      return practiceMode === 'daily-review' || practiceMode === 'verification'
+        ? generateWordCheckQuestions(unit.words, allGradeWords)
+        : generateQuestions(unit, allGradeWords)
     },
-    [unit, allGradeWords, retryKey]
+    [unit, allGradeWords, practiceMode, retryKey]
   )
-  const [currentQ, setCurrentQ] = useState(0)
-  const [score, setScore] = useState(0)
-  const [finished, setFinished] = useState(false)
-  const [result, setResult] = useState<{ score: number; stars: number } | null>(null)
-
   const handleAnswer = useCallback((correct: boolean, wrongWordIds?: string[]) => {
-    const nextScore = correct ? score + 10 : score
-
-    if (correct) {
-      setScore(nextScore)
-    } else {
-      const q = questions[currentQ]
-      const idsToAdd = wrongWordIds?.length
-        ? wrongWordIds
-        : q.type === 'match'
-          ? []
-          : [q.word.id]
-
-      if (idsToAdd.length > 0) {
-        let progress = loadProgress()
-        for (const wordId of idsToAdd) {
-          progress = addWrongWord(progress, wordId)
-        }
-        saveProgress(progress)
-      }
-    }
+    const nextCorrectCount = correct ? correctCount + 1 : correctCount
+    const q = questions[currentQ]
+    let progress = applyQuizAnswer({
+      progress: loadProgress(),
+      question: q,
+      isCorrect: correct,
+      wrongWordIds,
+      source: practiceConfig?.source ?? 'quiz',
+    })
+    setCorrectCount(nextCorrectCount)
 
     if (currentQ >= questions.length - 1) {
+      const nextScore = Math.round((nextCorrectCount / questions.length) * 100)
       const stars = nextScore >= 100 ? 3 : nextScore >= 80 ? 2 : nextScore >= 60 ? 1 : 0
-
-      let progress = recordStudyActivity(loadProgress())
-      if (!reviewMode && stars > 0 && grade && unit) {
+      const completedAt = new Date()
+      progress = recordStudyActivity(progress, completedAt)
+      if (!practiceMode && stars > 0 && grade && unit) {
         progress = completeUnit(progress, grade.id, unit.id, stars)
+      }
+      if (practiceConfig?.dailyTaskId) {
+        progress = completeDailyTask(
+          progress,
+          getLocalDateKey(completedAt),
+          practiceConfig.dailyTaskId,
+        )
+      }
+      progress = {
+        ...progress,
+        studySessions: [
+          ...progress.studySessions,
+          {
+            id: `quiz-${completedAt.getTime()}-${practiceMode ?? `${grade?.id}-${unit?.id}`}`,
+            date: getLocalDateKey(completedAt),
+            taskType: practiceConfig?.studyTaskType ?? 'quiz',
+            itemCount: questions.length,
+            correctCount: nextCorrectCount,
+            durationSeconds: Math.max(
+              0,
+              Math.round((completedAt.getTime() - quizStartedAt.current) / 1000),
+            ),
+          },
+        ],
       }
       saveProgress(progress)
 
-      setResult({ score: nextScore, stars })
+      setResult({ score: nextScore, stars, correctCount: nextCorrectCount })
       setFinished(true)
       return
     }
+    saveProgress(progress)
     setCurrentQ(q => q + 1)
-  }, [currentQ, questions, score, grade, reviewMode, unit])
+  }, [
+    correctCount,
+    currentQ,
+    grade,
+    practiceConfig,
+    practiceMode,
+    questions,
+    unit,
+  ])
 
   const handleRetry = () => {
     if (!unit) return
     setRetryKey(key => key + 1)
     setCurrentQ(0)
-    setScore(0)
+    setCorrectCount(0)
     setFinished(false)
     setResult(null)
+    quizStartedAt.current = Date.now()
   }
 
   if (loading) return <div className="text-center py-10 text-gray-400">加载中...</div>
 
   if (!grade || !unit) return <div className="text-center py-10">未找到该单元</div>
 
-  if (reviewMode && unit.words.length === 0) {
+  if (practiceMode && unit.words.length === 0) {
     return (
       <div className="text-center py-10">
         <div className="text-5xl mb-4">🎉</div>
-        <h2 className="text-xl font-bold text-gray-800">错题本已经清空</h2>
+        <h2 className="text-xl font-bold text-gray-800">{practiceConfig?.emptyTitle}</h2>
         <button
-          onClick={() => navigate('/wrong-book')}
+          onClick={() => navigate(practiceConfig?.backPath ?? '/bridge/today')}
           className="mt-5 px-6 py-3 rounded-xl bg-primary text-white font-bold"
         >
-          返回错题本
+          {practiceMode === 'wrong-book' ? '返回错题本' : '返回今日任务'}
         </button>
       </div>
     )
@@ -494,7 +639,7 @@ export default function QuizPage({ reviewMode = false }: QuizPageProps) {
 
   const unitIndex = grade.units.findIndex(item => item.id === unit.id)
   const previousUnit = unitIndex > 0 ? grade.units[unitIndex - 1] : null
-  const isLocked = !reviewMode
+  const isLocked = !practiceMode
     && !!previousUnit
     && !loadProgress().completedUnits[`${grade.id}-${previousUnit.id}`]
 
@@ -522,11 +667,12 @@ export default function QuizPage({ reviewMode = false }: QuizPageProps) {
       <ResultScreen
         score={result.score}
         total={questions.length}
+        correctCount={result.correctCount}
         stars={result.stars}
         gradeColor={grade.color}
-        title={reviewMode ? '错题重练完成！' : '闯关完成！'}
-        onRetry={handleRetry}
-        onBack={() => navigate(reviewMode ? '/wrong-book' : `/grade/${grade.id}`)}
+        title={practiceConfig?.resultTitle ?? '闯关完成！'}
+        onRetry={practiceConfig?.dailyTaskId ? undefined : handleRetry}
+        onBack={() => navigate(practiceConfig?.backPath ?? `/grade/${grade.id}`)}
       />
     )
   }
@@ -540,7 +686,7 @@ export default function QuizPage({ reviewMode = false }: QuizPageProps) {
           第 {currentQ + 1} / {questions.length} 题
         </span>
         <span className="text-sm font-bold" style={{ color: grade.color }}>
-          {score} 分
+          已答对 {correctCount} 题
         </span>
       </div>
       <div className="bg-gray-200 rounded-full h-1.5 overflow-hidden mb-6">
