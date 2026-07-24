@@ -23,13 +23,29 @@ function hasPrioritySignal(state: WordLearningState): boolean {
     || !!state.prioritySignals.lastDiagnosticWeakAt
 }
 
-function getSettingsSignature(settings: BridgePlanSettings): string {
+function getPlanSignature(
+  settings: BridgePlanSettings,
+  progress: ProgressData,
+  dateKey: string,
+): string {
+  const latestResult = progress.diagnosticResults.at(-1)
+  const completedToday = latestResult
+    && getLocalDateKey(new Date(latestResult.completedAt)) === dateKey
+  const diagnosticState = progress.diagnosticDraft
+    ? `draft:${progress.diagnosticDraft.id}`
+    : completedToday
+      ? `completed-today:${latestResult.id}`
+      : progress.diagnosticResults.length === 0 && !progress.diagnosticSkippedAt
+        ? 'diagnostic-needed'
+        : `diagnostic-ready:${latestResult?.id ?? progress.diagnosticSkippedAt ?? 'skipped'}`
+
   return [
     settings.startDate,
     settings.studyDaysPerWeek,
     settings.dailyMinutes,
     settings.focus,
     settings.previewGrade2 ? 'preview' : 'no-preview',
+    diagnosticState,
   ].join('|')
 }
 
@@ -176,14 +192,39 @@ export function buildDailyStudyPlan(
 ): DailyStudyPlan {
   const dateKey = getLocalDateKey(date)
   const isStudyDay = isScheduledStudyDay(date, settings)
+  const latestDiagnosticResult = progress.diagnosticResults.at(-1)
+  const completedDiagnosticToday = latestDiagnosticResult
+    && getLocalDateKey(new Date(latestDiagnosticResult.completedAt)) === dateKey
+  const includeDiagnostic = !!progress.diagnosticDraft
+    || !!completedDiagnosticToday
+    || (
+      progress.diagnosticResults.length === 0
+      && !progress.diagnosticSkippedAt
+    )
 
   if (!isStudyDay) {
     return {
       date: dateKey,
-      settingsSignature: getSettingsSignature(settings),
+      settingsSignature: getPlanSignature(settings, progress, dateKey),
       reviewWordIds: [],
       verificationWordIds: [],
       newWordIds: [],
+      includeDiagnostic: false,
+      quizQuestionCount: 0,
+      includeMath: false,
+      completedTaskIds: [],
+      generatedAt: date.toISOString(),
+    }
+  }
+
+  if (includeDiagnostic) {
+    return {
+      date: dateKey,
+      settingsSignature: getPlanSignature(settings, progress, dateKey),
+      reviewWordIds: [],
+      verificationWordIds: [],
+      newWordIds: [],
+      includeDiagnostic: true,
       quizQuestionCount: 0,
       includeMath: false,
       completedTaskIds: [],
@@ -203,10 +244,11 @@ export function buildDailyStudyPlan(
 
   return {
     date: dateKey,
-    settingsSignature: getSettingsSignature(settings),
+    settingsSignature: getPlanSignature(settings, progress, dateKey),
     reviewWordIds,
     verificationWordIds,
     newWordIds,
+    includeDiagnostic: false,
     quizQuestionCount: settings.dailyMinutes === 10 ? 5 : 10,
     includeMath: shouldIncludeMath(date, settings),
     completedTaskIds: [],
@@ -216,6 +258,7 @@ export function buildDailyStudyPlan(
 
 export function getDailyTaskIds(plan: DailyStudyPlan): DailyTaskId[] {
   return [
+    ...(plan.includeDiagnostic ? ['diagnostic' as const] : []),
     ...(plan.reviewWordIds.length > 0 ? ['review' as const] : []),
     ...(plan.verificationWordIds.length > 0 ? ['verification' as const] : []),
     ...(plan.newWordIds.length > 0 ? ['new_words' as const] : []),

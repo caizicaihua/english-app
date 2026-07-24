@@ -15,6 +15,7 @@ import { normalizeProgressData, type ProgressData } from './storage'
 function createProgress(overrides: Partial<ProgressData> = {}): ProgressData {
   return {
     ...normalizeProgressData(undefined),
+    diagnosticSkippedAt: '2026-07-20T09:00:00.000Z',
     ...overrides,
   }
 }
@@ -164,5 +165,15 @@ describe('daily study plan', () => {
     expect(saturday.quizQuestionCount).toBe(0)
     expect(saturday.newWordIds).toEqual([])
     expect(afterPlan.quizQuestionCount).toBe(0)
+  })
+
+  it('uses one diagnostic section as the whole daily task', () => {
+    const progress = createProgress({ diagnosticSkippedAt: undefined })
+    const plan = buildDailyStudyPlan(progress, createSettings(), date)
+
+    expect(plan.includeDiagnostic).toBe(true)
+    expect(plan.quizQuestionCount).toBe(0)
+    expect(plan.newWordIds).toEqual([])
+    expect(plan.includeMath).toBe(false)
   })
 })

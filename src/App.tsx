@@ -15,6 +15,8 @@ import MathWrongBookPage from './pages/MathWrongBookPage'
 import BridgeHomePage from './pages/BridgeHomePage'
 import BridgeSetupPage from './pages/BridgeSetupPage'
 import TodayPlanPage from './pages/TodayPlanPage'
+import DiagnosticPage from './pages/DiagnosticPage'
+import DiagnosticResultPage from './pages/DiagnosticResultPage'
 
 const router = createHashRouter([
   {
@@ -37,6 +39,8 @@ const router = createHashRouter([
       { path: 'bridge', element: <BridgeHomePage /> },
       { path: 'bridge/setup', element: <BridgeSetupPage /> },
       { path: 'bridge/today', element: <TodayPlanPage /> },
+      { path: 'bridge/diagnostic', element: <DiagnosticPage /> },
+      { path: 'bridge/diagnostic/result', element: <DiagnosticResultPage /> },
     ],
   },
 ])

@@ -1,6 +1,15 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { loadProgress, loadSettings } from '../utils/storage'
+import {
+  loadProgress,
+  loadSettings,
+  saveProgress,
+} from '../utils/storage'
+import {
+  getDiagnosticOverallScore,
+  isCurrentDiagnosticSectionComplete,
+} from '../utils/diagnostic'
 import {
   getBridgePlanDateRange,
   getDailyTaskIds,
@@ -10,7 +19,7 @@ import {
 export default function BridgeHomePage() {
   const navigate = useNavigate()
   const settings = loadSettings()
-  const progress = loadProgress()
+  const [progress, setProgress] = useState(loadProgress)
   const planSettings = settings.bridgePlan
 
   if (!planSettings.enabled) {
@@ -36,6 +45,19 @@ export default function BridgeHomePage() {
   const taskIds = getDailyTaskIds(dailyPlan)
   const completedCount = dailyPlan.completedTaskIds.length
   const dateRange = getBridgePlanDateRange(planSettings)
+  const latestDiagnosticResult = progress.diagnosticResults.at(-1)
+  const diagnosticScore = latestDiagnosticResult
+    ? getDiagnosticOverallScore(latestDiagnosticResult)
+    : null
+
+  const handleSkipDiagnostic = () => {
+    const next = {
+      ...progress,
+      diagnosticSkippedAt: new Date().toISOString(),
+    }
+    saveProgress(next)
+    setProgress(next)
+  }
 
   return (
     <div>
@@ -45,6 +67,65 @@ export default function BridgeHomePage() {
         <p className="mt-1 text-sm text-gray-500">
           {dateRange.startDate} 至 {dateRange.endDate}
         </p>
+      </div>
+
+      <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-2xl">🩺</div>
+            <div className="mt-2 font-bold text-gray-800">一年级英语小体检</div>
+            <div className="mt-1 text-sm text-gray-500">
+              {progress.diagnosticDraft
+                ? isCurrentDiagnosticSectionComplete(progress.diagnosticDraft)
+                  ? `第 ${progress.diagnosticDraft.currentSection + 1}/5 小节已完成`
+                  : `已保存到第 ${progress.diagnosticDraft.currentSection + 1}/5 小节`
+                : diagnosticScore !== null
+                  ? `最近一次整体掌握率 ${diagnosticScore}%`
+                  : progress.diagnosticSkippedAt
+                    ? '已暂时跳过，可以随时补做'
+                    : '每次 4–9 题，可以分几天完成'}
+            </div>
+          </div>
+          {diagnosticScore !== null && (
+            <div className="rounded-xl bg-indigo-50 px-3 py-2 text-xl font-bold text-primary">
+              {diagnosticScore}%
+            </div>
+          )}
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => navigate(
+              latestDiagnosticResult && !progress.diagnosticDraft
+                ? '/bridge/diagnostic/result'
+                : '/bridge/diagnostic',
+            )}
+            className="rounded-xl bg-primary py-2.5 text-sm font-bold text-white"
+          >
+            {progress.diagnosticDraft
+              ? '继续诊断'
+              : latestDiagnosticResult
+                ? '查看结果'
+                : '开始诊断'}
+          </button>
+          {!latestDiagnosticResult && !progress.diagnosticDraft ? (
+            <button
+              type="button"
+              onClick={handleSkipDiagnostic}
+              className="rounded-xl bg-gray-100 py-2.5 text-sm font-bold text-gray-500"
+            >
+              暂时跳过
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/bridge/diagnostic')}
+              className="rounded-xl bg-gray-100 py-2.5 text-sm font-bold text-gray-500"
+            >
+              {latestDiagnosticResult ? '重新诊断' : '打开诊断'}
+            </button>
+          )}
+        </div>
       </div>
 
       <motion.button

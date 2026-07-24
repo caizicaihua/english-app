@@ -64,8 +64,26 @@ export default function TodayPlanPage() {
     title: string
     description: string
     countLabel: string
-    onOpen: () => void
+    onOpen: () => void | Promise<void>
+    canMarkComplete?: boolean
   }> = [
+    ...(plan.includeDiagnostic ? [{
+      id: 'diagnostic' as const,
+      icon: '🩺',
+      title: '一年级英语小体检',
+      description: completed.has('diagnostic')
+        ? '今天的小体检任务已经完成，不需要再做其他整套日常任务。'
+        : progress.diagnosticDraft
+        ? `继续第 ${progress.diagnosticDraft.currentSection + 1}/5 小节，完成后今天就不用再做整套日常任务。`
+        : '每次只做 4–9 题，可以分几天完成，不用一次做完。',
+      countLabel: completed.has('diagnostic')
+        ? '今日已完成'
+        : progress.diagnosticDraft
+        ? `第 ${progress.diagnosticDraft.currentSection + 1}/5 节`
+        : '可分 5 次',
+      onOpen: () => navigate('/bridge/diagnostic'),
+      canMarkComplete: false,
+    }] : []),
     ...(plan.reviewWordIds.length > 0 ? [{
       id: 'review' as const,
       icon: '🔁',
@@ -90,8 +108,8 @@ export default function TodayPlanPage() {
       countLabel: `${plan.newWordIds.length} 个词`,
       onOpen: () => navigate(routeForWordIds(plan.newWordIds, 'learn')),
     }] : []),
-    {
-      id: 'quiz',
+    ...(plan.quizQuestionCount > 0 ? [{
+      id: 'quiz' as const,
       icon: '🎯',
       title: '英语小练习',
       description: '用选择、听力和拼写检查今天是否真的理解。',
@@ -100,7 +118,7 @@ export default function TodayPlanPage() {
         [...plan.reviewWordIds, ...plan.verificationWordIds, ...plan.newWordIds],
         'quiz',
       )),
-    },
+    }] : []),
     ...(plan.includeMath ? [{
       id: 'math' as const,
       icon: '🧮',
@@ -144,6 +162,7 @@ export default function TodayPlanPage() {
             description={task.description}
             countLabel={task.countLabel}
             completed={completed.has(task.id)}
+            canMarkComplete={task.canMarkComplete}
             onOpen={task.onOpen}
             onComplete={() => handleComplete(task.id)}
           />

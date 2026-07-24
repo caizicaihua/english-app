@@ -48,7 +48,22 @@ export interface BridgePlanSettings {
 
 export type DiagnosticQuestionType = 'zh2en' | 'listen' | 'spell'
 
+export interface DiagnosticQuestionPlan {
+  id: string
+  unitKey: string
+  wordId: string
+  questionType: DiagnosticQuestionType
+  phase: 'base' | 'confirmation'
+}
+
+export interface DiagnosticSectionPlan {
+  id: string
+  unitKeys: string[]
+  questions: DiagnosticQuestionPlan[]
+}
+
 export interface DiagnosticResponse {
+  questionId: string
   wordId: string
   unitKey: string
   questionType: DiagnosticQuestionType
@@ -75,6 +90,8 @@ export interface DiagnosticDraft {
   id: string
   startedAt: string
   currentSection: number
+  currentQuestionIndex: number
+  sections: DiagnosticSectionPlan[]
   responses: DiagnosticResponse[]
 }
 
@@ -96,6 +113,7 @@ export interface StudySession {
 }
 
 export type DailyTaskId =
+  | 'diagnostic'
   | 'review'
   | 'verification'
   | 'new_words'
@@ -108,6 +126,7 @@ export interface DailyStudyPlan {
   reviewWordIds: string[]
   verificationWordIds: string[]
   newWordIds: string[]
+  includeDiagnostic: boolean
   quizQuestionCount: number
   includeMath: boolean
   completedTaskIds: DailyTaskId[]

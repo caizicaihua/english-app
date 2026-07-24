@@ -18,9 +18,11 @@ import {
   type DailyStudyPlan,
   type DailyTaskId,
   type DiagnosticDraft,
+  type DiagnosticQuestionPlan,
   type DiagnosticQuestionType,
   type DiagnosticResponse,
   type DiagnosticResult,
+  type DiagnosticSectionPlan,
   type DiagnosticUnitResult,
   type MasteryLevel,
   type StudySession,
@@ -54,7 +56,14 @@ const studyTaskTypes: StudyTaskType[] = [
   'diagnostic',
   'math',
 ]
-const dailyTaskIds: DailyTaskId[] = ['review', 'verification', 'new_words', 'quiz', 'math']
+const dailyTaskIds: DailyTaskId[] = [
+  'diagnostic',
+  'review',
+  'verification',
+  'new_words',
+  'quiz',
+  'math',
+]
 
 export interface ProgressData {
   schemaVersion: typeof PROGRESS_SCHEMA_VERSION
@@ -69,6 +78,7 @@ export interface ProgressData {
   unitFollowUpPlans: UnitFollowUpPlan[]
   diagnosticResults: DiagnosticResult[]
   diagnosticDraft: DiagnosticDraft | null
+  diagnosticSkippedAt?: string
   studySessions: StudySession[]
   dailyPlans: Record<string, DailyStudyPlan>
 }
@@ -199,6 +209,7 @@ function normalizeUnitFollowUpPlan(value: unknown): UnitFollowUpPlan | null {
 
 function normalizeDiagnosticResponse(value: unknown): DiagnosticResponse | null {
   if (!isRecord(value)) return null
+  const questionId = toOptionalString(value.questionId)
   const wordId = toOptionalString(value.wordId)
   const unitKey = toOptionalString(value.unitKey)
   const answeredAt = toOptionalString(value.answeredAt)
@@ -206,11 +217,19 @@ function normalizeDiagnosticResponse(value: unknown): DiagnosticResponse | null 
     ? value.questionType as DiagnosticQuestionType
     : null
 
-  if (!wordId || !unitKey || !answeredAt || !questionType || typeof value.isCorrect !== 'boolean') {
+  if (
+    !questionId
+    || !wordId
+    || !unitKey
+    || !answeredAt
+    || !questionType
+    || typeof value.isCorrect !== 'boolean'
+  ) {
     return null
   }
 
   return {
+    questionId,
     wordId,
     unitKey,
     answeredAt,
@@ -267,16 +286,64 @@ function normalizeDiagnosticResult(value: unknown): DiagnosticResult | null {
   }
 }
 
+function normalizeDiagnosticQuestion(value: unknown): DiagnosticQuestionPlan | null {
+  if (!isRecord(value)) return null
+  const id = toOptionalString(value.id)
+  const unitKey = toOptionalString(value.unitKey)
+  const wordId = toOptionalString(value.wordId)
+  const questionType = diagnosticQuestionTypes.includes(value.questionType as DiagnosticQuestionType)
+    ? value.questionType as DiagnosticQuestionType
+    : null
+  const phase = value.phase === 'base' || value.phase === 'confirmation'
+    ? value.phase
+    : null
+  if (!id || !unitKey || !wordId || !questionType || !phase) return null
+
+  return { id, unitKey, wordId, questionType, phase }
+}
+
+function normalizeDiagnosticSection(value: unknown): DiagnosticSectionPlan | null {
+  if (!isRecord(value)) return null
+  const id = toOptionalString(value.id)
+  if (!id || !Array.isArray(value.questions)) return null
+
+  const questions = value.questions
+    .map(normalizeDiagnosticQuestion)
+    .filter((item): item is DiagnosticQuestionPlan => !!item)
+  if (questions.length === 0) return null
+
+  return {
+    id,
+    unitKeys: toStringArray(value.unitKeys),
+    questions,
+  }
+}
+
 function normalizeDiagnosticDraft(value: unknown): DiagnosticDraft | null {
   if (!isRecord(value)) return null
   const id = toOptionalString(value.id)
   const startedAt = toOptionalString(value.startedAt)
-  if (!id || !startedAt) return null
+  if (!id || !startedAt || !Array.isArray(value.sections)) return null
+
+  const sections = value.sections
+    .map(normalizeDiagnosticSection)
+    .filter((item): item is DiagnosticSectionPlan => !!item)
+  if (sections.length === 0) return null
+  const currentSection = Math.min(
+    sections.length - 1,
+    toNonNegativeInteger(value.currentSection),
+  )
+  const currentQuestionIndex = Math.min(
+    sections[currentSection].questions.length,
+    toNonNegativeInteger(value.currentQuestionIndex),
+  )
 
   return {
     id,
     startedAt,
-    currentSection: toNonNegativeInteger(value.currentSection),
+    currentSection,
+    currentQuestionIndex,
+    sections,
     responses: normalizeDiagnosticResponses(value.responses),
   }
 }
@@ -328,6 +395,7 @@ function normalizeDailyStudyPlan(value: unknown): DailyStudyPlan | null {
     reviewWordIds: toStringArray(value.reviewWordIds),
     verificationWordIds: toStringArray(value.verificationWordIds),
     newWordIds: toStringArray(value.newWordIds),
+    includeDiagnostic: value.includeDiagnostic === true,
     quizQuestionCount: Math.min(10, toNonNegativeInteger(value.quizQuestionCount)),
     includeMath: value.includeMath === true,
     completedTaskIds: Array.isArray(value.completedTaskIds)
@@ -399,6 +467,9 @@ export function normalizeProgressData(value: unknown, now = new Date()): Progres
         .filter((item): item is DiagnosticResult => !!item)
       : [],
     diagnosticDraft: normalizeDiagnosticDraft(value.diagnosticDraft),
+    ...(toOptionalString(value.diagnosticSkippedAt)
+      ? { diagnosticSkippedAt: String(value.diagnosticSkippedAt) }
+      : {}),
     studySessions: normalizeStudySessions(value.studySessions, now),
     dailyPlans: normalizeDailyStudyPlans(value.dailyPlans),
   }
@@ -735,7 +806,9 @@ export function updateWordMastery(
   const wordState = recordWordResult(data.wordMastery[wordId], isCorrect, source, date)
   const wrongWords = isCorrect && wordState.level >= 3
     ? data.wrongWords.filter(id => id !== wordId)
-    : !isCorrect && !data.wrongWords.includes(wordId)
+    : !isCorrect
+      && (source === 'quiz' || source === 'review')
+      && !data.wrongWords.includes(wordId)
       ? [...data.wrongWords, wordId]
       : data.wrongWords
 

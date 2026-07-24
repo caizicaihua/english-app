@@ -6,7 +6,8 @@ interface DailyTaskCardProps {
   description: string
   countLabel: string
   completed: boolean
-  onOpen: () => void
+  canMarkComplete?: boolean
+  onOpen: () => void | Promise<void>
   onComplete: () => void
 }
 
@@ -16,6 +17,7 @@ export default function DailyTaskCard({
   description,
   countLabel,
   completed,
+  canMarkComplete = true,
   onOpen,
   onComplete,
 }: DailyTaskCardProps) {
@@ -46,7 +48,9 @@ export default function DailyTaskCard({
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           type="button"
-          onClick={onOpen}
+          onClick={() => {
+            void onOpen()
+          }}
           className="rounded-xl bg-primary px-3 py-2.5 text-sm font-bold text-white active:scale-95"
         >
           打开内容
@@ -54,10 +58,14 @@ export default function DailyTaskCard({
         <button
           type="button"
           onClick={onComplete}
-          disabled={completed}
+          disabled={completed || !canMarkComplete}
           className="rounded-xl bg-gray-100 px-3 py-2.5 text-sm font-bold text-gray-600 active:scale-95 disabled:text-emerald-600"
         >
-          {completed ? '已完成' : '完成打卡'}
+          {completed
+            ? '已完成'
+            : canMarkComplete
+              ? '完成打卡'
+              : '完成小节后记录'}
         </button>
       </div>
     </motion.div>
