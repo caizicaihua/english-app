@@ -7,13 +7,14 @@ This is a Vite + React + TypeScript single-page app. Core code lives in `src/`: 
 - `npm run dev` — starts the Vite dev server on `0.0.0.0` for local testing.
 - `npm run build` — runs TypeScript project checks, then creates a production build.
 - `npm run lint` — runs ESLint across the repository.
+- `npm test` — runs the Vitest test suite once.
 - `npm run preview` — serves the built app locally for a final smoke test.
 
 ## Coding Style & Naming Conventions
 Use TypeScript and React function components throughout. Follow the existing style: 2-space indentation, single quotes, no semicolons, and small focused modules. Name page components with `Page` suffix (`HomePage.tsx`), reusable components in PascalCase (`StarRating.tsx`), and utilities/data files in camelCase (`storage.ts`, `words.ts`). Prefer descriptive variable names and keep route definitions centralized in `src/App.tsx`. Use Tailwind utility classes inline in JSX; avoid adding separate CSS files unless the pattern already exists.
 
 ## Testing Guidelines
-There is currently no automated test suite configured. At minimum, run `npm run lint` and manually verify affected flows in `npm run dev` before opening a PR. For UI changes, check route navigation, local storage behavior, and responsive layout. If you add tests, keep them close to the feature using `*.test.ts` or `*.test.tsx` naming and prefer Vitest-compatible patterns.
+Automated tests use Vitest. Run `npm test`, `npm run lint`, and `npm run build`, then manually verify affected flows with `npm run dev` before opening a PR. For UI changes, check route navigation, local storage behavior, and responsive layout. Keep tests close to the feature using `*.test.ts` or `*.test.tsx` naming and Vitest-compatible patterns.
 
 ## Commit & Pull Request Guidelines
 Git history is not available in this workspace, so use short, imperative commit messages; Conventional Commit style is preferred, for example `feat: add wrong-book progress tracking` or `fix: guard localStorage parsing`. Keep each commit focused on one change. PRs should include a clear summary, testing notes, linked issues, and screenshots or short recordings for visible UI updates.

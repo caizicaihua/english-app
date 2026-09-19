@@ -492,6 +492,7 @@ function normalizeAnswer(question: MathQuestion, answer: string | undefined): st
 export function buildMathAttempt(params: {
   title: string
   mode: MathPracticeMode
+  skillId?: string
   questions: MathQuestion[]
   answers: Record<string, string>
   durationSeconds: number
@@ -520,10 +521,13 @@ export function buildMathAttempt(params: {
   return {
     id: `attempt-${Date.now()}`,
     mode: params.mode,
+    ...(params.skillId ? { skillId: params.skillId } : {}),
     title: params.title,
     completedAt: new Date().toISOString(),
     durationSeconds: params.durationSeconds,
-    timeSpentSeconds: Math.max(0, Math.min(params.durationSeconds, params.timeSpentSeconds)),
+    timeSpentSeconds: Math.max(0, Math.floor(params.durationSeconds > 0
+      ? Math.min(params.durationSeconds, params.timeSpentSeconds)
+      : params.timeSpentSeconds)),
     totalCount: params.questions.length,
     correctCount,
     score: correctCount,

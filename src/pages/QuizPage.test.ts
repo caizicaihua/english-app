@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Unit, Word } from '../data/words'
-import { generateQuestions, generateWordCheckQuestions } from '../utils/quiz'
+import { createSpellingQuestion, generateQuestions, generateWordCheckQuestions } from '../utils/quiz'
 
 function createWord(id: string, en: string): Word {
   return {
@@ -16,6 +16,19 @@ function createWord(id: string, en: string): Word {
 }
 
 describe('English quiz generation', () => {
+  it('keeps one keyboard with all required letters on each long phrase question', () => {
+    const question = createSpellingQuestion(createWord('2-10-6', 'post office'))
+    const keyboard = question.keyboardLetters
+    expect(keyboard).toBeDefined()
+    const letters = question.word.en.split('')
+    for (const index of question.hiddenIndices ?? []) {
+      expect(keyboard).toContain(letters[index])
+    }
+    expect(new Set(keyboard).size).toBe(keyboard?.length)
+    expect(question.displayLetters?.[4]).toBe(' ')
+    expect(question.keyboardLetters).toBe(keyboard)
+  })
+
   it('creates ten review questions even from a small wrong-word set', () => {
     const words = [
       createWord('1-1-1', 'apple'),

@@ -1,11 +1,18 @@
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { gradeCatalog, getTotalWords } from '../data/words'
-import { getActiveStreak, getLocalDateKey, loadProgress } from '../utils/storage'
+import { getActiveStreak, getLocalDateKey, loadProgress, loadMathProgress } from '../utils/storage'
+import { getEnglishPracticeCount } from '../utils/englishStats'
 
 export default function StatsPage() {
+  const navigate = useNavigate()
   const progress = loadProgress()
+  const mathProgress = loadMathProgress()
   const today = getLocalDateKey()
-  const todayCount = progress.dailyWords[today] || 0
+  const todayWords = new Set([...(progress.dailyWordIds[today] ?? []), ...Object.entries(progress.wordMastery).filter(([, state]) => state.firstSeenAt && getLocalDateKey(new Date(state.firstSeenAt)) === today).map(([id]) => id)])
+  const todayCount = Math.max(progress.dailyWords[today] || 0, todayWords.size)
+  const englishCount = getEnglishPracticeCount(progress, today)
+  const mathCount = mathProgress.attemptHistory.filter(attempt => getLocalDateKey(new Date(attempt.completedAt)) === today).reduce((sum, attempt) => sum + attempt.questions.filter(result => result.userAnswer.trim()).length, 0)
   const activeStreak = getActiveStreak(progress)
   const masteryStates = Object.values(progress.wordMastery)
   const encounteredCount = masteryStates.filter(state => state.level > 0).length
@@ -21,7 +28,9 @@ export default function StatsPage() {
 
       <div className="grid grid-cols-2 gap-3 mb-6">
         {[
-          { label: '今日学习', value: todayCount, emoji: '📝', color: 'text-primary' },
+          { label: '今日新接触词', value: todayCount, emoji: '📝', color: 'text-primary' },
+          { label: '今日英语练习', value: englishCount, emoji: '🎧', color: 'text-indigo-600' },
+          { label: '今日数学作答', value: mathCount, emoji: '🧮', color: 'text-amber-600' },
           { label: '累计接触', value: encounteredCount, emoji: '📚', color: 'text-success' },
           { label: '连续天数', value: activeStreak, emoji: '🔥', color: 'text-warning' },
           { label: '基本掌握', value: masteredCount, emoji: '✅', color: 'text-emerald-600' },
@@ -69,6 +78,7 @@ export default function StatsPage() {
         </div>
       </div>
 
+      <button onClick={() => navigate('/bridge/report')} className="mb-5 w-full rounded-xl bg-primary py-3 font-bold text-white">查看双科周报</button>
       <h3 className="font-bold text-gray-700 mb-3">各年级进度</h3>
       <div className="space-y-3">
         {gradeCatalog.map(grade => {

@@ -1,170 +1,100 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { BridgePlanSettings } from '../data/bridgePlan'
-import {
-  getLocalDateKey,
-  loadSettings,
-  saveSettings,
-} from '../utils/storage'
+import { gradeCatalog } from '../data/words'
+import { mathSkills } from '../data/mathSkills'
+import { getLocalDateKey, loadProgress, loadSettings, saveProgress, saveSettings } from '../utils/storage'
+import { recordPlanSettings } from '../utils/planHistory'
 
-const studyDayOptions: Array<{ value: 3 | 4 | 5; label: string }> = [
-  { value: 3, label: '每周 3 天' },
-  { value: 4, label: '每周 4 天' },
-  { value: 5, label: '每周 5 天' },
-]
-
-const dailyMinuteOptions: Array<{ value: 10 | 15 | 20; label: string }> = [
-  { value: 10, label: '10 分钟' },
-  { value: 15, label: '15 分钟' },
-  { value: 20, label: '20 分钟' },
-]
-
-const focusOptions: Array<{
-  value: BridgePlanSettings['focus']
-  label: string
-  description: string
-}> = [
-  { value: 'balanced', label: '均衡', description: '英语和数学都练一点' },
-  { value: 'english', label: '英语优先', description: '增加英语新词名额' },
-  { value: 'math', label: '数学优先', description: '减少新词，数学每周 3 次' },
-]
+const fieldClass = 'mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-gray-800'
 
 export default function BridgeSetupPage() {
   const navigate = useNavigate()
-  const settings = loadSettings()
-  const [plan, setPlan] = useState<BridgePlanSettings>(() => ({
-    ...settings.bridgePlan,
-    startDate: settings.bridgePlan.startDate || getLocalDateKey(),
-  }))
-
-  const handleSave = () => {
-    saveSettings({
-      ...settings,
-      bridgePlan: {
-        ...plan,
-        enabled: true,
-      },
-    })
-    navigate('/bridge')
+  const [plan, setPlan] = useState<BridgePlanSettings>(() => {
+    const saved = loadSettings().bridgePlan
+    return { ...saved, mode: 'semester', startDate: saved.startDate || getLocalDateKey() }
+  })
+  const grade = gradeCatalog.find(item => item.id === (plan.gradeId ?? 2))!
+  const textbook = plan.textbook ?? { english: '', math: '', edition: '' }
+  const setField = <K extends keyof BridgePlanSettings>(key: K, value: BridgePlanSettings[K]) => {
+    setPlan(current => ({ ...current, [key]: value }))
+  }
+  const save = () => {
+    const next = { ...plan, mode: 'semester' as const, enabled: true }
+    saveProgress(recordPlanSettings(loadProgress(), next))
+    saveSettings({ ...loadSettings(), bridgePlan: next })
+    navigate('/bridge/today')
   }
 
   return (
     <div>
-      <div className="mb-6 text-center">
-        <div className="mb-2 text-5xl">🌻</div>
-        <h2 className="text-2xl font-bold text-gray-800">设置暑假学习计划</h2>
-        <p className="mt-2 text-sm text-gray-500">每天少一点，坚持六周更轻松</p>
+      <div className="mb-6">
+        <p className="text-sm font-semibold text-primary">家长设置</p>
+        <h2 className="mt-1 text-2xl font-bold text-gray-800">跟着学校的节奏学</h2>
+        <p className="mt-2 text-sm leading-6 text-gray-500">两科共用每天的学习时间。调整进度会保留成绩，已开始的今日任务保持不变，新安排从明天生效。</p>
       </div>
-
-      <div className="space-y-4">
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
-          <label htmlFor="bridge-start-date" className="text-sm font-bold text-gray-700">
-            计划开始日期
+      <form onSubmit={event => { event.preventDefault(); save() }} className="space-y-4">
+        <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">
+          <h3 className="font-bold text-gray-800">当前课程</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-sm text-gray-600">年级
+              <select className={fieldClass} value={plan.gradeId ?? 2} onChange={event => setPlan(current => ({ ...current, gradeId: Number(event.target.value), englishUnitId: 1 }))}>
+                {gradeCatalog.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <label className="text-sm text-gray-600">学期
+              <select className={fieldClass} value={plan.semester ?? 'upper'} onChange={event => setField('semester', event.target.value as 'upper' | 'lower')}>
+                <option value="upper">上学期</option><option value="lower">下学期</option>
+              </select>
+            </label>
+          </div>
+          <label className="block text-sm text-gray-600">英语当前主题
+            <select className={fieldClass} value={plan.englishUnitId ?? 1} onChange={event => setField('englishUnitId', Number(event.target.value))}>
+              {grade.units.map(unit => <option key={unit.id} value={unit.id}>{unit.nameZh} · {unit.name}</option>)}
+            </select>
           </label>
-          <input
-            id="bridge-start-date"
-            type="date"
-            value={plan.startDate}
-            onChange={event => setPlan(current => ({
-              ...current,
-              startDate: event.target.value,
-            }))}
-            className="mt-3 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-700"
-          />
+          <label className="block text-sm text-gray-600">数学当前知识点
+            <select className={fieldClass} value={plan.mathSkillId ?? 'addition-carry'} onChange={event => setField('mathSkillId', event.target.value)}>
+              {mathSkills.map(skill => <option key={skill.id} value={skill.id}>{skill.title}</option>)}
+            </select>
+          </label>
+          <p className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">当前为通用主题与能力练习。学期标签用于安排学习，不代表已与教材章节同步；数学先选学校正在学习的知识点。</p>
         </section>
-
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
-          <div className="text-sm font-bold text-gray-700">每周学习天数</div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {studyDayOptions.map(option => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setPlan(current => ({
-                  ...current,
-                  studyDaysPerWeek: option.value,
-                }))}
-                className={`rounded-xl px-2 py-3 text-sm font-bold ${
-                  plan.studyDaysPerWeek === option.value
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-50 text-gray-500'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm">
+          <h3 className="font-bold text-gray-800">学习节奏</h3>
+          <label className="block text-sm text-gray-600">开始日期
+            <input required type="date" className={fieldClass} value={plan.startDate} onChange={event => setField('startDate', event.target.value)} />
+          </label>
+          <label className="block text-sm text-gray-600">学习日
+            <select className={fieldClass} value={plan.studyDaysPerWeek} onChange={event => setField('studyDaysPerWeek', Number(event.target.value) as 3 | 4 | 5)}>
+              <option value={3}>每周 3 天 · 周一、三、五</option>
+              <option value={4}>每周 4 天 · 周一、二、四、五</option>
+              <option value={5}>每周 5 天 · 周一至周五</option>
+            </select>
+          </label>
+          <label className="block text-sm text-gray-600">每天两科合计
+            <select className={fieldClass} value={plan.dailyMinutes} onChange={event => setField('dailyMinutes', Number(event.target.value) as 10 | 15 | 20)}>
+              {[10, 15, 20].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}
+            </select>
+          </label>
+          <label className="block text-sm text-gray-600">学习侧重
+            <select className={fieldClass} value={plan.focus} onChange={event => setField('focus', event.target.value as BridgePlanSettings['focus'])}>
+              <option value="balanced">两科均衡</option><option value="english">英语多一点</option><option value="math">数学多一点</option>
+            </select>
+          </label>
+          <p className="text-xs leading-5 text-gray-500">先复习，再学少量新内容。不补欠下的任务，日常数学不限时。</p>
         </section>
-
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
-          <div className="text-sm font-bold text-gray-700">每天学习时长</div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {dailyMinuteOptions.map(option => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setPlan(current => ({
-                  ...current,
-                  dailyMinutes: option.value,
-                }))}
-                className={`rounded-xl px-2 py-3 text-sm font-bold ${
-                  plan.dailyMinutes === option.value
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-50 text-gray-500'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
-          <div className="text-sm font-bold text-gray-700">学习侧重</div>
-          <div className="mt-3 space-y-2">
-            {focusOptions.map(option => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setPlan(current => ({ ...current, focus: option.value }))}
-                className={`w-full rounded-xl border px-4 py-3 text-left ${
-                  plan.focus === option.value
-                    ? 'border-primary bg-indigo-50'
-                    : 'border-gray-100 bg-gray-50'
-                }`}
-              >
-                <div className="text-sm font-bold text-gray-700">{option.label}</div>
-                <div className="mt-0.5 text-xs text-gray-400">{option.description}</div>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <label className="flex items-center justify-between rounded-2xl bg-white p-5 shadow-sm">
-          <div>
-            <div className="text-sm font-bold text-gray-700">开启二年级预习</div>
-            <div className="mt-1 text-xs text-gray-400">一年级复习不拥挤时，每天最多 5 个新词</div>
-          </div>
-          <input
-            type="checkbox"
-            checked={plan.previewGrade2}
-            onChange={event => setPlan(current => ({
-              ...current,
-              previewGrade2: event.target.checked,
-            }))}
-            className="h-5 w-5 accent-indigo-600"
-          />
-        </label>
-      </div>
-
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={!plan.startDate}
-        className="mt-6 w-full rounded-2xl bg-primary py-3.5 font-bold text-white shadow-md active:scale-[0.98] disabled:opacity-40"
-      >
-        保存并生成六周计划
-      </button>
+        <details className="rounded-2xl bg-white p-5 shadow-sm">
+          <summary className="cursor-pointer text-sm font-bold text-gray-700">教材备注（可选）</summary>
+          <p className="mt-2 text-xs text-gray-500">记录出版社与版次，方便之后对齐学校内容。</p>
+          {([{ key: 'english', label: '英语教材 / 出版社' }, { key: 'math', label: '数学教材 / 出版社' }, { key: 'edition', label: '版次 / 年份' }] as const).map(item => (
+            <label key={item.key} className="mt-3 block text-sm text-gray-600">{item.label}
+              <input maxLength={100} className={fieldClass} value={textbook[item.key]} onChange={event => setField('textbook', { ...textbook, [item.key]: event.target.value })} />
+            </label>
+          ))}
+        </details>
+        <button type="submit" className="w-full rounded-2xl bg-primary py-4 font-bold text-white shadow-md">保存学习计划</button>
+      </form>
     </div>
   )
 }

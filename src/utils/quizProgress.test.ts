@@ -16,6 +16,37 @@ const word = {
 }
 
 describe('quiz mastery updates', () => {
+  it('records a listening question changed to text only as reading evidence', () => {
+    const progress = applyQuizAnswer({
+      progress: normalizeProgressData(undefined),
+      question: { type: 'listen', word, options: ['apple'], correctAnswer: 'apple' },
+      isCorrect: true,
+      source: 'quiz',
+      usedReadingFallback: true,
+      answeredAt: new Date(2026, 8, 19, 9),
+    })
+    expect(progress.englishEvidence).toHaveLength(1)
+    expect(progress.englishEvidence?.[0]).toMatchObject({ skill: 'reading', correct: true })
+    expect(progress.lastStudyDate).toBe('2026-09-19')
+    expect(progress.streak).toBe(1)
+    expect(progress.studySessions).toHaveLength(0)
+  })
+
+  it('keeps listening and spelling evidence separate without backfilling old skill records', () => {
+    let progress = normalizeProgressData({ learnedWords: [word.id] })
+    expect(progress.englishEvidence ?? []).toEqual([])
+    for (const type of ['listen', 'spell'] as const) {
+      progress = applyQuizAnswer({
+        progress,
+        question: { type, word, correctAnswer: 'apple' },
+        isCorrect: true,
+        source: 'quiz',
+        answeredAt: new Date(2026, 8, 19, 9),
+      })
+    }
+    expect(progress.englishEvidence?.map(item => item.skill)).toEqual(['listening', 'spelling'])
+  })
+
   it('updates a normal question through the shared mastery state', () => {
     const progress = applyQuizAnswer({
       progress: normalizeProgressData(undefined),

@@ -5,6 +5,7 @@ import { loadGrade, loadWordsByIds, type Grade, type Unit, type Word } from '../
 import {
   generateQuestions,
   generateWordCheckQuestions,
+  createSpellingKeyboard,
   shuffle,
   type Question,
 } from '../utils/quiz'
@@ -18,34 +19,50 @@ import {
   recordStudyActivity,
 } from '../utils/storage'
 import {
-  completeDailyTask,
   getActiveDailyQueueWordIds,
   getDailyQuizWordIds,
   getOrCreateDailyStudyPlan,
   saveDailyStudyPlan,
+  startDailyTask,
 } from '../utils/studyPlan'
+import { completeEnglishDailyTask } from '../utils/englishTaskOwnership'
 import type { DailyTaskId, StudyTaskType } from '../data/bridgePlan'
-import { speak } from '../utils/speech'
+import { isSpeechAvailable, speak } from '../utils/speech'
 import StarRating from '../components/StarRating'
 
 // --- Sub Components ---
 
 function ChoiceQuestion({ question, onAnswer, gradeColor }: {
-  question: Question; onAnswer: (correct: boolean) => void; gradeColor: string
+  question: Question; onAnswer: (correct: boolean, wrongWordIds?: string[], usedReadingFallback?: boolean) => void; gradeColor: string
 }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [answered, setAnswered] = useState(false)
+  const [readingFallback, setReadingFallback] = useState(() => question.type === 'listen' && !isSpeechAvailable())
+  const [audioReady, setAudioReady] = useState(false)
+  const playback = useRef<(() => void) | undefined>(undefined)
+  const answerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  const play = useCallback(() => {
+    playback.current = speak(question.word.en, 0.8, {
+      onEnd: () => setAudioReady(true),
+      onUnavailable: () => setReadingFallback(true),
+    })
+  }, [question.word.en])
 
   useEffect(() => {
-    if (question.type === 'listen') speak(question.word.en)
-  }, [question])
+    if (question.type === 'listen') play()
+    return () => {
+      playback.current?.()
+      clearTimeout(answerTimer.current)
+    }
+  }, [question.type, play])
 
   const handleSelect = (opt: string) => {
-    if (answered) return
+    if (answered || (question.type === 'listen' && !readingFallback && !audioReady)) return
     setSelected(opt)
     setAnswered(true)
     const isCorrect = opt === question.correctAnswer
-    setTimeout(() => onAnswer(isCorrect), 800)
+    answerTimer.current = setTimeout(() => onAnswer(isCorrect, undefined, readingFallback), 800)
   }
 
   return (
@@ -86,13 +103,22 @@ function ChoiceQuestion({ question, onAnswer, gradeColor }: {
         ) : question.type === 'listen' ? (
           <>
             <div className="text-5xl mb-3">🎧</div>
-            <p className="text-sm text-gray-400 mt-1">听发音，选出正确的单词</p>
-            <button
-              onClick={() => speak(question.word.en)}
+            <p className="text-sm text-gray-500 mt-1">{readingFallback ? '已改为阅读题：根据中文选单词，本题只记录阅读' : '听发音，选出正确的单词'}</p>
+            {readingFallback ? (
+              <p className="mt-3 text-xl font-bold text-gray-800">{question.word.zh}</p>
+            ) : <button
+              onClick={play}
+              disabled={answered}
+              aria-label="重新播放单词"
               className="mt-3 w-14 h-14 rounded-full bg-white shadow-md flex items-center justify-center text-2xl mx-auto active:scale-90 transition-transform"
             >
               🔊
-            </button>
+            </button>}
+            {!readingFallback && !answered && (
+              <button onClick={() => { playback.current?.(); setReadingFallback(true) }} className="mt-3 text-sm text-orange-700 underline">
+                没有声音？改做阅读题
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -114,6 +140,7 @@ function ChoiceQuestion({ question, onAnswer, gradeColor }: {
             <motion.button
               key={opt}
               onClick={() => handleSelect(opt)}
+              disabled={answered || (question.type === 'listen' && !readingFallback && !audioReady)}
               animate={answered && opt === selected && opt !== question.correctAnswer ? { x: [0, -8, 8, -4, 4, 0] } : {}}
               transition={{ duration: 0.4 }}
               className={`w-full py-3 px-4 rounded-xl border-2 ${border} ${bg} text-lg font-semibold text-gray-700 active:scale-[0.97] transition-all`}
@@ -141,29 +168,35 @@ function MatchQuestion({ question, onAnswer, gradeColor }: {
   const [wrongPair, setWrongPair] = useState<string | null>(null)
   const [mistakes, setMistakes] = useState(0)
   const mistakenWordIds = useRef(new Set<string>())
+  const answerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => {
+    clearTimeout(answerTimer.current)
+    clearTimeout(feedbackTimer.current)
+  }, [])
 
   const handleLeftClick = (id: string) => {
-    if (matched.has(id)) return
+    if (matched.has(id) || wrongPair) return
     setSelectedLeft(id)
     setWrongPair(null)
   }
 
   const handleRightClick = (id: string) => {
-    if (!selectedLeft || matched.has(id)) return
+    if (!selectedLeft || matched.has(id) || wrongPair) return
     if (selectedLeft === id) {
       const newMatched = new Set(matched)
       newMatched.add(id)
       setMatched(newMatched)
       setSelectedLeft(null)
       if (newMatched.size === words.length) {
-        setTimeout(() => onAnswer(mistakes === 0, [...mistakenWordIds.current]), 500)
+        answerTimer.current = setTimeout(() => onAnswer(mistakes === 0, [...mistakenWordIds.current]), 500)
       }
     } else {
       mistakenWordIds.current.add(selectedLeft)
       mistakenWordIds.current.add(id)
       setWrongPair(id)
       setMistakes(m => m + 1)
-      setTimeout(() => { setWrongPair(null); setSelectedLeft(null) }, 600)
+      feedbackTimer.current = setTimeout(() => { setWrongPair(null); setSelectedLeft(null) }, 600)
     }
   }
 
@@ -179,6 +212,7 @@ function MatchQuestion({ question, onAnswer, gradeColor }: {
             <motion.button
               key={w.id}
               onClick={() => handleLeftClick(w.id)}
+              disabled={matched.has(w.id) || !!wrongPair}
               animate={wrongPair && selectedLeft === w.id ? { x: [0, -5, 5, -3, 3, 0] } : {}}
               className={`w-full py-2.5 px-3 rounded-xl border-2 text-sm font-semibold transition-all ${
                 matched.has(w.id)
@@ -198,6 +232,7 @@ function MatchQuestion({ question, onAnswer, gradeColor }: {
             <motion.button
               key={w.id}
               onClick={() => handleRightClick(w.id)}
+              disabled={matched.has(w.id) || !!wrongPair}
               animate={wrongPair === w.id ? { x: [0, -5, 5, -3, 3, 0] } : {}}
               className={`w-full py-2.5 px-3 rounded-xl border-2 text-sm font-semibold transition-all ${
                 matched.has(w.id)
@@ -225,12 +260,11 @@ function SpellQuestion({ question, onAnswer, gradeColor }: {
   const [answered, setAnswered] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
 
-  const missingLetters = hiddenIndices!.map(i => letters[i])
-  const extraLetters = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(letter => !missingLetters.includes(letter))
-  const keyboardLetters = shuffle([
-    ...missingLetters,
-    ...shuffle(extraLetters).slice(0, Math.max(5, 8 - missingLetters.length)),
-  ])
+  const [keyboardLetters] = useState(() => (
+    question.keyboardLetters ?? createSpellingKeyboard(letters, hiddenIndices!)
+  ))
+  const answerTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(answerTimer.current), [])
 
   const currentSlot = hiddenIndices!.find(i => filled[i] === undefined)
 
@@ -245,7 +279,7 @@ function SpellQuestion({ question, onAnswer, gradeColor }: {
       const correct = result === word.en
       setIsCorrect(correct)
       setAnswered(true)
-      setTimeout(() => onAnswer(correct), 800)
+      answerTimer.current = setTimeout(() => onAnswer(correct), 800)
     }
   }
 
@@ -257,10 +291,11 @@ function SpellQuestion({ question, onAnswer, gradeColor }: {
         <p className="text-sm text-gray-400 mt-1">填入缺少的字母</p>
       </div>
 
-      <div className="flex justify-center gap-2 mb-8">
+      <div className="flex flex-wrap justify-center gap-1 sm:gap-2 mb-8 max-w-lg mx-auto" aria-label="待拼写单词">
         {letters.map((l, i) => {
           const isHidden = hiddenIndices!.includes(i)
           const filledLetter = filled[i]
+          if (l === ' ') return <span key={i} className="w-3" aria-label="空格" />
           let borderColor = 'border-gray-300'
           if (answered && isHidden) {
             borderColor = filledLetter === l ? 'border-green-400' : 'border-red-400'
@@ -271,7 +306,7 @@ function SpellQuestion({ question, onAnswer, gradeColor }: {
             <motion.div
               key={i}
               animate={answered && isHidden && filledLetter !== l ? { x: [0, -4, 4, -2, 2, 0] } : {}}
-              className={`w-10 h-12 rounded-lg border-2 ${borderColor} flex items-center justify-center text-xl font-bold ${
+              className={`w-8 sm:w-10 h-11 shrink-0 rounded-lg border-2 ${borderColor} flex items-center justify-center text-xl font-bold ${
                 isHidden
                   ? filledLetter
                     ? answered
@@ -450,22 +485,19 @@ const practiceConfigs: Record<NonNullable<QuizPageProps['practiceMode']>, Practi
 
 function getPracticeWordIds(
   practiceMode: NonNullable<QuizPageProps['practiceMode']>,
-): string[] {
+): { wordIds: string[]; taskDate?: string } {
   const progress = loadProgress()
-  if (practiceMode === 'wrong-book') return progress.wrongWords
+  if (practiceMode === 'wrong-book') return { wordIds: progress.wrongWords }
 
   const plan = getOrCreateDailyStudyPlan(progress, loadSettings().bridgePlan)
-  if (progress.dailyPlans[plan.date] !== plan) {
-    saveProgress(saveDailyStudyPlan(progress, plan))
-  }
-
-  if (practiceMode === 'daily-quiz') return getDailyQuizWordIds(plan)
-
-  return getActiveDailyQueueWordIds(
-    progress,
-    plan,
-    practiceMode === 'daily-review' ? 'review' : 'verification',
+  const wordIds = practiceMode === 'daily-quiz' ? getDailyQuizWordIds(plan) : getActiveDailyQueueWordIds(
+    progress, plan, practiceMode === 'daily-review' ? 'review' : 'verification',
   )
+  let updated = progress.dailyPlans[plan.date] === plan ? progress : saveDailyStudyPlan(progress, plan)
+  const taskId = practiceConfigs[practiceMode].dailyTaskId
+  if (wordIds.length > 0 && taskId) updated = startDailyTask(updated, plan.date, taskId)
+  if (updated !== progress) saveProgress(updated)
+  return { wordIds, taskDate: plan.date }
 }
 
 export default function QuizPage({ practiceMode }: QuizPageProps) {
@@ -485,13 +517,15 @@ export default function QuizPage({ practiceMode }: QuizPageProps) {
     correctCount: number
   } | null>(null)
   const quizStartedAt = useRef(0)
+  const taskDateRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
     let active = true
     quizStartedAt.current = Date.now()
 
     if (practiceMode && practiceConfig) {
-      const wordIds = getPracticeWordIds(practiceMode)
+      const { wordIds, taskDate } = getPracticeWordIds(practiceMode)
+      taskDateRef.current = taskDate
       const relevantGradeIds = [...new Set(wordIds.map(wordId => Number(wordId.split('-')[0])))]
         .filter(grade => Number.isInteger(grade) && grade >= 1 && grade <= 6)
 
@@ -563,15 +597,18 @@ export default function QuizPage({ practiceMode }: QuizPageProps) {
     },
     [unit, allGradeWords, practiceMode, retryKey]
   )
-  const handleAnswer = useCallback((correct: boolean, wrongWordIds?: string[]) => {
+  const handleAnswer = useCallback((correct: boolean, wrongWordIds?: string[], usedReadingFallback = false) => {
     const nextCorrectCount = correct ? correctCount + 1 : correctCount
     const q = questions[currentQ]
+    const sessionId = `quiz-${quizStartedAt.current}-r${retryKey}`
     let progress = applyQuizAnswer({
       progress: loadProgress(),
       question: q,
       isCorrect: correct,
       wrongWordIds,
       source: practiceConfig?.source ?? 'quiz',
+      usedReadingFallback,
+      evidenceId: `${sessionId}-q${currentQ}`,
     })
     setCorrectCount(nextCorrectCount)
 
@@ -584,9 +621,9 @@ export default function QuizPage({ practiceMode }: QuizPageProps) {
         progress = completeUnit(progress, grade.id, unit.id, stars)
       }
       if (practiceConfig?.dailyTaskId) {
-        progress = completeDailyTask(
+        progress = completeEnglishDailyTask(
           progress,
-          getLocalDateKey(completedAt),
+          taskDateRef.current,
           practiceConfig.dailyTaskId,
         )
       }
@@ -595,7 +632,7 @@ export default function QuizPage({ practiceMode }: QuizPageProps) {
         studySessions: [
           ...progress.studySessions,
           {
-            id: `quiz-${completedAt.getTime()}-${practiceMode ?? `${grade?.id}-${unit?.id}`}`,
+            id: sessionId,
             date: getLocalDateKey(completedAt),
             taskType: practiceConfig?.studyTaskType ?? 'quiz',
             itemCount: questions.length,
@@ -623,6 +660,7 @@ export default function QuizPage({ practiceMode }: QuizPageProps) {
     practiceMode,
     questions,
     unit,
+    retryKey,
   ])
 
   const handleRetry = () => {
@@ -649,29 +687,6 @@ export default function QuizPage({ practiceMode }: QuizPageProps) {
           className="mt-5 px-6 py-3 rounded-xl bg-primary text-white font-bold"
         >
           {practiceMode === 'wrong-book' ? '返回错题本' : '返回今日任务'}
-        </button>
-      </div>
-    )
-  }
-
-  const unitIndex = grade.units.findIndex(item => item.id === unit.id)
-  const previousUnit = unitIndex > 0 ? grade.units[unitIndex - 1] : null
-  const isLocked = !practiceMode
-    && !!previousUnit
-    && !loadProgress().completedUnits[`${grade.id}-${previousUnit.id}`]
-
-  if (isLocked) {
-    return (
-      <div className="text-center py-10">
-        <div className="text-5xl mb-4">🔒</div>
-        <h2 className="text-xl font-bold text-gray-800">这一关还没有解锁</h2>
-        <p className="text-sm text-gray-500 mt-2">请先完成上一单元的闯关。</p>
-        <button
-          onClick={() => navigate(`/grade/${grade.id}`)}
-          className="mt-5 px-6 py-3 rounded-xl text-white font-bold"
-          style={{ backgroundColor: grade.color }}
-        >
-          返回年级页
         </button>
       </div>
     )

@@ -1,5 +1,5 @@
-export const PROGRESS_SCHEMA_VERSION = 3
-export const SETTINGS_SCHEMA_VERSION = 1
+export const PROGRESS_SCHEMA_VERSION = 4
+export const SETTINGS_SCHEMA_VERSION = 2
 
 export type MasteryLevel = 0 | 1 | 2 | 3 | 4
 
@@ -47,6 +47,12 @@ export interface BridgePlanSettings {
   dailyMinutes: 10 | 15 | 20
   focus: 'balanced' | 'english' | 'math'
   previewGrade2: boolean
+  mode?: 'semester' | 'bridge'
+  gradeId?: number
+  semester?: 'upper' | 'lower'
+  englishUnitId?: number
+  mathSkillId?: string
+  textbook?: { english: string; math: string; edition: string }
 }
 
 export type DiagnosticQuestionType = 'zh2en' | 'listen' | 'spell'
@@ -122,6 +128,7 @@ export type DailyTaskId =
   | 'new_words'
   | 'quiz'
   | 'math'
+  | 'english_activity'
 
 export interface DailyStudyPlan {
   date: string
@@ -134,6 +141,11 @@ export interface DailyStudyPlan {
   includeMath: boolean
   completedTaskIds: DailyTaskId[]
   generatedAt: string
+  status?: 'study' | 'rest' | 'not-started' | 'ended' | 'disabled'
+  mathSkillId?: string
+  mathQuestionCount?: number
+  englishActivityId?: string
+  startedAt?: string
 }
 
 export const defaultBridgePlanSettings: BridgePlanSettings = {
@@ -143,4 +155,10 @@ export const defaultBridgePlanSettings: BridgePlanSettings = {
   dailyMinutes: 15,
   focus: 'balanced',
   previewGrade2: true,
+  mode: 'semester',
+  gradeId: 2,
+  semester: 'upper',
+  englishUnitId: 1,
+  mathSkillId: 'addition-carry',
+  textbook: { english: '', math: '', edition: '' },
 }

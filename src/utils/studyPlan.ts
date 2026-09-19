@@ -6,11 +6,12 @@ import type {
   WordLearningState,
 } from '../data/bridgePlan'
 import { gradeCatalog } from '../data/words'
+import { getEnglishActivityForUnit } from '../data/englishActivities'
 import type { ProgressData } from './storage'
 import { addLocalDays, recordUnitFollowUpResult } from './mastery'
 import { getLocalDateKey, updateWordMastery } from './storage'
 
-const DAILY_PLAN_ALGORITHM_VERSION = 2
+const DAILY_PLAN_ALGORITHM_VERSION = 3
 const studyDaysByFrequency: Record<3 | 4 | 5, number[]> = {
   3: [1, 3, 5],
   4: [1, 2, 4, 5],
@@ -48,6 +49,12 @@ function getPlanSignature(
 
   return [
     `plan-v${DAILY_PLAN_ALGORITHM_VERSION}`,
+    settings.enabled,
+    settings.mode ?? 'bridge',
+    settings.gradeId ?? 2,
+    settings.semester ?? 'upper',
+    settings.englishUnitId ?? 1,
+    settings.mathSkillId ?? 'addition-carry',
     settings.startDate,
     settings.studyDaysPerWeek,
     settings.dailyMinutes,
@@ -101,6 +108,7 @@ function getVerificationCandidates(
 function selectReinforcementWords(
   progress: ProgressData,
   dateKey: string,
+  limit = 8,
 ): Pick<DailyStudyPlan, 'reviewWordIds' | 'verificationWordIds'> {
   const reviewCandidates = getReviewCandidates(progress, dateKey)
   const reviewWordIds = new Set(reviewCandidates.map(item => item.wordId))
@@ -116,7 +124,7 @@ function selectReinforcementWords(
   let verificationCount = 0
 
   for (const candidate of candidates) {
-    if (selected.length >= 8) break
+    if (selected.length >= limit) break
     if (candidate.type === 'verification' && verificationCount >= 3) continue
     selected.push(candidate)
     if (candidate.type === 'verification') verificationCount += 1
@@ -138,7 +146,12 @@ function getNewWordLimit(settings: BridgePlanSettings): number {
   return 5
 }
 
-function getCurriculumWordIds(settings: BridgePlanSettings): string[] {
+export function getCurriculumWordIds(settings: BridgePlanSettings): string[] {
+  if (settings.mode === 'semester') {
+    const grade = gradeCatalog.find(item => item.id === (settings.gradeId ?? 2))
+    const unit = grade?.units.find(item => item.id === (settings.englishUnitId ?? 1))
+    return unit?.wordIds ?? []
+  }
   const grade1WordIds = gradeCatalog
     .find(grade => grade.id === 1)
     ?.units.flatMap(unit => unit.wordIds) ?? []
@@ -160,7 +173,11 @@ function selectNewWords(
 ): string[] {
   if (reinforcementCount >= 8) return []
 
-  const limit = getNewWordLimit(settings)
+  const semesterLimit = settings.focus === 'math' ? 2 : settings.dailyMinutes === 20 ? 4 : 3
+  const itemBudget = settings.dailyMinutes === 10 ? 3 : settings.dailyMinutes === 15 ? 6 : 9
+  const limit = settings.mode === 'semester'
+    ? Math.max(0, Math.min(semesterLimit, itemBudget - reinforcementCount))
+    : getNewWordLimit(settings)
 
   return getCurriculumWordIds(settings)
     .filter(wordId => {
@@ -195,13 +212,23 @@ function shouldIncludeMath(date: Date, settings: BridgePlanSettings): boolean {
   return mathDays.includes(date.getDay())
 }
 
-function isScheduledStudyDay(date: Date, settings: BridgePlanSettings): boolean {
+export function getStudyDayStatus(date: Date, settings: BridgePlanSettings): NonNullable<DailyStudyPlan['status']> {
+  if (!settings.enabled) return 'disabled'
   const dateKey = getLocalDateKey(date)
   const startDate = settings.startDate || dateKey
-  const endDate = addLocalDays(startDate, 41)
-  if (dateKey < startDate || dateKey > endDate) return false
+  if (dateKey < startDate) return 'not-started'
+  if (settings.mode !== 'semester' && dateKey > addLocalDays(startDate, 41)) return 'ended'
+  return studyDaysByFrequency[settings.studyDaysPerWeek].includes(date.getDay()) ? 'study' : 'rest'
+}
 
-  return studyDaysByFrequency[settings.studyDaysPerWeek].includes(date.getDay())
+export function getPlanStatusMessage(status: DailyStudyPlan['status']): { title: string; description: string } {
+  switch (status) {
+    case 'disabled': return { title: '先设置学习计划', description: '选择两科当前内容，每天学一点。' }
+    case 'not-started': return { title: '计划还没有开始', description: '到了开始日期，就会安排当天的学习内容。' }
+    case 'ended': return { title: '暑假计划已结束', description: '切换到学期计划，继续二年级学习。' }
+    case 'study': return { title: '今天的内容已学过', description: '可以自由复习，或请家长调整当前单元。' }
+    default: return { title: '今天是休息日', description: '不用补做，也可以自由探索喜欢的内容。' }
+  }
 }
 
 export function buildDailyStudyPlan(
@@ -210,20 +237,22 @@ export function buildDailyStudyPlan(
   date = new Date(),
 ): DailyStudyPlan {
   const dateKey = getLocalDateKey(date)
-  const isStudyDay = isScheduledStudyDay(date, settings)
+  const status = getStudyDayStatus(date, settings)
+  const isSemester = settings.mode === 'semester'
   const latestDiagnosticResult = progress.diagnosticResults.at(-1)
   const completedDiagnosticToday = latestDiagnosticResult
     && getLocalDateKey(new Date(latestDiagnosticResult.completedAt)) === dateKey
-  const includeDiagnostic = !!progress.diagnosticDraft
+  const includeDiagnostic = !isSemester && (!!progress.diagnosticDraft
     || !!completedDiagnosticToday
     || (
       progress.diagnosticResults.length === 0
       && !progress.diagnosticSkippedAt
-    )
+    ))
 
-  if (!isStudyDay) {
+  if (status !== 'study') {
     return {
       date: dateKey,
+      status,
       settingsSignature: getPlanSignature(settings, progress, dateKey),
       reviewWordIds: [],
       verificationWordIds: [],
@@ -239,6 +268,7 @@ export function buildDailyStudyPlan(
   if (includeDiagnostic) {
     return {
       date: dateKey,
+      status,
       settingsSignature: getPlanSignature(settings, progress, dateKey),
       reviewWordIds: [],
       verificationWordIds: [],
@@ -251,7 +281,8 @@ export function buildDailyStudyPlan(
     }
   }
 
-  const { reviewWordIds, verificationWordIds } = selectReinforcementWords(progress, dateKey)
+  const reviewLimit = isSemester ? settings.dailyMinutes === 10 ? 3 : settings.dailyMinutes === 15 ? 4 : 6 : 8
+  const { reviewWordIds, verificationWordIds } = selectReinforcementWords(progress, dateKey, reviewLimit)
   const reinforcementWordIds = new Set([...reviewWordIds, ...verificationWordIds])
   const reinforcementCount = reinforcementWordIds.size
   const newWordIds = selectNewWords(
@@ -261,18 +292,29 @@ export function buildDailyStudyPlan(
     reinforcementCount,
   )
   const hasEnglishContent = reinforcementCount + newWordIds.length > 0
+  const activity = isSemester && (settings.gradeId ?? 2) === 2
+    && reinforcementCount < reviewLimit
+    && (settings.dailyMinutes >= 15 || !hasEnglishContent)
+    ? getEnglishActivityForUnit(settings.englishUnitId ?? 1)
+    : undefined
 
   return {
     date: dateKey,
+    status,
     settingsSignature: getPlanSignature(settings, progress, dateKey),
     reviewWordIds,
     verificationWordIds,
     newWordIds,
     includeDiagnostic: false,
-    quizQuestionCount: hasEnglishContent
-      ? settings.dailyMinutes === 10 ? 5 : 10
-      : 0,
-    includeMath: shouldIncludeMath(date, settings),
+    quizQuestionCount: isSemester
+      ? !activity && newWordIds.length > 0 ? Math.min(5, newWordIds.length) : 0
+      : hasEnglishContent ? settings.dailyMinutes === 10 ? 5 : 10 : 0,
+    includeMath: isSemester || shouldIncludeMath(date, settings),
+    ...(isSemester ? {
+      mathSkillId: settings.mathSkillId ?? 'addition-carry',
+      mathQuestionCount: settings.dailyMinutes === 10 || settings.focus === 'english' ? 6 : settings.dailyMinutes === 20 || settings.focus === 'math' ? 10 : 8,
+      ...(activity ? { englishActivityId: activity.id } : {}),
+    } : {}),
     completedTaskIds: [],
     generatedAt: date.toISOString(),
   }
@@ -313,6 +355,7 @@ export function getDailyTaskIds(plan: DailyStudyPlan): DailyTaskId[] {
     ...(plan.newWordIds.length > 0 ? ['new_words' as const] : []),
     ...(plan.quizQuestionCount > 0 ? ['quiz' as const] : []),
     ...(plan.includeMath ? ['math' as const] : []),
+    ...(plan.englishActivityId ? ['english_activity' as const] : []),
   ]
 }
 
@@ -347,6 +390,9 @@ export function getOrCreateDailyStudyPlan(
   const next = buildDailyStudyPlan(progress, settings, date)
   const existing = progress.dailyPlans[next.date]
 
+  // A started semester day is a snapshot. New settings apply on the next day.
+  if (existing && settings.mode === 'semester' && hasStartedDailyPlan(progress, existing)) return existing
+
   if (existing?.settingsSignature === next.settingsSignature) {
     return existing
   }
@@ -356,6 +402,25 @@ export function getOrCreateDailyStudyPlan(
     ...next,
     completedTaskIds: existing?.completedTaskIds.filter(taskId => nextTaskIds.has(taskId)) ?? [],
   }
+}
+
+export function hasStartedDailyPlan(progress: ProgressData, plan: DailyStudyPlan): boolean {
+  if (plan.startedAt || plan.completedTaskIds.length > 0) return true
+  const wordIds = [...plan.newWordIds, ...plan.reviewWordIds, ...plan.verificationWordIds]
+  return wordIds.some(id => {
+    const reviewedAt = progress.wordMastery[id]?.lastReviewedAt
+    return reviewedAt && reviewedAt >= plan.generatedAt && getLocalDateKey(new Date(reviewedAt)) === plan.date
+  })
+}
+
+export function startDailyTask(
+  progress: ProgressData,
+  dateKey: string,
+  taskId: DailyTaskId,
+): ProgressData {
+  const plan = progress.dailyPlans[dateKey]
+  if (!plan || plan.startedAt || !getDailyTaskIds(plan).includes(taskId)) return progress
+  return saveDailyStudyPlan(progress, { ...plan, startedAt: new Date().toISOString() })
 }
 
 export function saveDailyStudyPlan(
@@ -377,7 +442,7 @@ export function completeDailyTask(
   taskId: DailyTaskId,
 ): ProgressData {
   const plan = progress.dailyPlans[dateKey]
-  if (!plan || plan.completedTaskIds.includes(taskId)) return progress
+  if (!plan || !getDailyTaskIds(plan).includes(taskId) || plan.completedTaskIds.includes(taskId)) return progress
 
   return saveDailyStudyPlan(progress, {
     ...plan,

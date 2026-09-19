@@ -21,6 +21,7 @@ const DiagnosticPage = lazy(() => import('./pages/DiagnosticPage'))
 const DiagnosticResultPage = lazy(() => import('./pages/DiagnosticResultPage'))
 const ReviewQueuePage = lazy(() => import('./pages/ReviewQueuePage'))
 const ParentReportPage = lazy(() => import('./pages/ParentReportPage'))
+const EnglishActivityPage = lazy(() => import('./pages/EnglishActivityPage'))
 
 const router = createHashRouter([
   {
@@ -52,6 +53,7 @@ const router = createHashRouter([
       { path: 'bridge/verification', element: <ReviewQueuePage mode="verification" /> },
       { path: 'bridge/verification/quiz', element: <QuizPage practiceMode="verification" /> },
       { path: 'bridge/report', element: <ParentReportPage /> },
+      { path: 'english/activity/:activityId', element: <EnglishActivityPage /> },
     ],
   },
 ])

@@ -32,6 +32,11 @@ interface MathQuestionBase {
   prompt: string
   correctAnswer: string
   sectionLabel: string
+  skillId?: string
+  difficulty?: 1 | 2 | 3
+  explanation?: string
+  visual?: { rows: number; columns: number }
+  sourceReviewKey?: string
 }
 
 export interface MathQuestionCalc extends MathQuestionBase {
@@ -69,6 +74,7 @@ export interface MathSectionResult {
 export interface MathAttempt {
   id: string
   mode: MathPracticeMode
+  skillId?: string
   title: string
   completedAt: string
   durationSeconds: number
@@ -89,6 +95,7 @@ export interface MathWrongQuestion {
 export interface MathProgressData {
   schemaVersion: typeof MATH_SCHEMA_VERSION
   modeProgress: Partial<Record<ScoredMathMode, MathModeProgress>>
+  skillProgress?: Record<string, MathModeProgress>
   latestAttempt: MathAttempt | null
   attemptHistory: MathAttempt[]
   wrongQuestions: MathWrongQuestion[]

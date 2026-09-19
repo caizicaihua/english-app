@@ -1,6 +1,8 @@
 import type { Question } from './quiz'
+import { getQuestionSkill, recordEnglishEvidence } from './englishEvidence'
 import {
   updateWordMastery,
+  recordStudyActivity,
   type ProgressData,
 } from './storage'
 import {
@@ -38,6 +40,8 @@ export function applyQuizAnswer(params: {
   wrongWordIds?: string[]
   source: QuizProgressSource
   answeredAt?: Date
+  usedReadingFallback?: boolean
+  evidenceId?: string
 }): ProgressData {
   const answeredAt = params.answeredAt ?? new Date()
   const results = getQuestionWordResults(
@@ -46,7 +50,7 @@ export function applyQuizAnswer(params: {
     params.wrongWordIds,
   )
 
-  return results.reduce((progress, result) => {
+  const updated = results.reduce((progress, result) => {
     if (params.source === 'unit_verification') {
       return recordUnitVerification(progress, result.wordId, result.isCorrect, answeredAt)
     }
@@ -60,4 +64,12 @@ export function applyQuizAnswer(params: {
     )
     return recordUnitFollowUpAnswer(updated, result.wordId, result.isCorrect, answeredAt)
   }, params.progress)
+
+  return recordStudyActivity(recordEnglishEvidence(updated, {
+    id: params.evidenceId ?? `quiz-${answeredAt.getTime()}-${params.question.word.id}-${params.question.type}`,
+    activityId: `${params.source}:${params.question.word.id}`,
+    skill: getQuestionSkill(params.question.type, params.usedReadingFallback),
+    correct: params.isCorrect,
+    recordedAt: answeredAt.toISOString(),
+  }), answeredAt)
 }

@@ -1,15 +1,16 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { loadGrade, loadWordsByIds, type Grade } from '../data/words'
 import { loadProgress, loadSettings, saveProgress, saveSettings, markWordLearned } from '../utils/storage'
-import { getExampleSpeechRate, speak, speakDialogue, speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
+import { cancelSpeech, getExampleSpeechRate, speak, speakDialogue, speechSpeedOptions, type SpeechSpeedPreset } from '../utils/speech'
 import MasteryBadge from '../components/MasteryBadge'
 import {
-  completeDailyTask,
   getOrCreateDailyStudyPlan,
   saveDailyStudyPlan,
+  startDailyTask,
 } from '../utils/studyPlan'
+import { completeEnglishDailyTask } from '../utils/englishTaskOwnership'
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -35,13 +36,13 @@ export default function LearnPage({ practiceMode }: LearnPageProps) {
   const [direction, setDirection] = useState(0)
   const [completed, setCompleted] = useState(false)
   const [speechSpeed, setSpeechSpeed] = useState<SpeechSpeedPreset>(() => loadSettings().speechSpeed)
+  const taskDateRef = useRef<string | undefined>(undefined)
 
   const markLearned = useCallback((wordId: string, completesDeck = false) => {
     let updated = markWordLearned(loadProgress(), wordId)
 
     if (isDailyNew && completesDeck) {
-      const plan = getOrCreateDailyStudyPlan(updated, loadSettings().bridgePlan)
-      updated = completeDailyTask(updated, plan.date, 'new_words')
+      updated = completeEnglishDailyTask(updated, taskDateRef.current, 'new_words')
     }
 
     saveProgress(updated)
@@ -58,14 +59,21 @@ export default function LearnPage({ practiceMode }: LearnPageProps) {
     if (isDailyNew) {
       const progress = loadProgress()
       const plan = getOrCreateDailyStudyPlan(progress, loadSettings().bridgePlan)
-      const storedProgress = progress.dailyPlans[plan.date] === plan
+      taskDateRef.current = plan.date
+      let storedProgress = progress.dailyPlans[plan.date] === plan
         ? progress
         : saveDailyStudyPlan(progress, plan)
+      if (plan.newWordIds.length > 0) {
+        storedProgress = startDailyTask(storedProgress, plan.date, 'new_words')
+      }
 
       if (storedProgress !== progress) saveProgress(storedProgress)
 
       loadWordsByIds(plan.newWordIds).then(words => {
         if (!active) return
+        setCurrentIndex(0)
+        setCompleted(false)
+        setFlipped(false)
         setGrade({
           id: 0,
           name: 'Today New Words',
@@ -83,17 +91,22 @@ export default function LearnPage({ practiceMode }: LearnPageProps) {
 
       return () => {
         active = false
+        cancelSpeech()
       }
     }
 
     loadGrade(Number(gradeId)).then(data => {
       if (!active) return
+      setCurrentIndex(0)
+      setCompleted(false)
+      setFlipped(false)
       setGrade(data ?? null)
       setLoading(false)
     })
 
     return () => {
       active = false
+      cancelSpeech()
     }
   }, [gradeId, isDailyNew, unitId])
 
@@ -118,29 +131,6 @@ export default function LearnPage({ practiceMode }: LearnPageProps) {
     )
   }
 
-  const unitIndex = grade.units.findIndex(item => item.id === unit.id)
-  const previousUnit = unitIndex > 0 ? grade.units[unitIndex - 1] : null
-  const isLocked = !isDailyNew
-    && !!previousUnit
-    && !loadProgress().completedUnits[`${grade.id}-${previousUnit.id}`]
-
-  if (isLocked) {
-    return (
-      <div className="text-center py-10">
-        <div className="text-5xl mb-4">🔒</div>
-        <h2 className="text-xl font-bold text-gray-800">这个单元还没有解锁</h2>
-        <p className="text-sm text-gray-500 mt-2">请先完成上一单元的闯关。</p>
-        <button
-          onClick={() => navigate(`/grade/${grade.id}`)}
-          className="mt-5 px-6 py-3 rounded-xl text-white font-bold"
-          style={{ backgroundColor: grade.color }}
-        >
-          返回年级页
-        </button>
-      </div>
-    )
-  }
-
   const words = unit.words
   const word = words[currentIndex]
   const wordState = loadProgress().wordMastery[word.id]
@@ -149,6 +139,7 @@ export default function LearnPage({ practiceMode }: LearnPageProps) {
   )
 
   const goNext = () => {
+    cancelSpeech()
     const completesDeck = currentIndex >= words.length - 1
     markLearned(word.id, completesDeck)
     if (completesDeck) {
@@ -162,6 +153,7 @@ export default function LearnPage({ practiceMode }: LearnPageProps) {
 
   const goPrev = () => {
     if (currentIndex <= 0) return
+    cancelSpeech()
     setDirection(-1)
     setFlipped(false)
     setCurrentIndex(i => i - 1)

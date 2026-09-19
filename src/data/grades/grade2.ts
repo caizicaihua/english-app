@@ -14,7 +14,7 @@ export const grade2: Grade = {
         {
           "id": "2-1-1",
           "en": "uncle",
-          "zh": "叔叔",
+          "zh": "叔叔；舅舅",
           "emoji": "👨",
           "example": {
             "en": "This is my uncle.",
@@ -24,7 +24,7 @@ export const grade2: Grade = {
         {
           "id": "2-1-2",
           "en": "aunt",
-          "zh": "阿姨",
+          "zh": "阿姨；姑姑；婶婶",
           "emoji": "👩",
           "example": {
             "en": "This is my aunt.",
@@ -34,11 +34,11 @@ export const grade2: Grade = {
         {
           "id": "2-1-3",
           "en": "cousin",
-          "zh": "堂表兄弟姐妹",
+          "zh": "堂亲；表亲",
           "emoji": "🧒",
           "example": {
             "en": "My cousin is kind.",
-            "zh": "我的堂表兄弟姐妹很友好。"
+            "zh": "我的表亲很友好。"
           }
         },
         {
@@ -54,7 +54,7 @@ export const grade2: Grade = {
         {
           "id": "2-1-5",
           "en": "grandpa",
-          "zh": "爷爷",
+          "zh": "爷爷；外公",
           "emoji": "👴",
           "example": {
             "en": "My grandpa likes tea.",
@@ -64,7 +64,7 @@ export const grade2: Grade = {
         {
           "id": "2-1-6",
           "en": "grandma",
-          "zh": "奶奶",
+          "zh": "奶奶；外婆",
           "emoji": "👵",
           "example": {
             "en": "My grandma is happy.",
@@ -94,17 +94,42 @@ export const grade2: Grade = {
       ],
       "dialogues": [
         {
-          "title": "家庭练习",
+          "title": "看看家庭照片",
           "lines": [
             {
               "speaker": "A",
-              "en": "I can see uncle, aunt, cousin, and parents.",
-              "zh": "我能看见叔叔、阿姨、堂表兄弟姐妹和父母。"
+              "en": "Who's this?",
+              "zh": "这是谁？"
             },
             {
               "speaker": "B",
-              "en": "We can also learn grandpa, grandma, child, and relative.",
-              "zh": "我们还可以学习爷爷、奶奶、小孩和亲戚。"
+              "en": "This is my uncle.",
+              "zh": "这是我的叔叔。"
+            },
+            {
+              "speaker": "A",
+              "en": "Is this your aunt?",
+              "zh": "这是你的阿姨吗？"
+            },
+            {
+              "speaker": "B",
+              "en": "Yes. And this is my cousin.",
+              "zh": "是的。这是我的表亲。"
+            }
+          ]
+        },
+        {
+          "title": "看望家人",
+          "lines": [
+            {
+              "speaker": "A",
+              "en": "Where are your parents?",
+              "zh": "你的父母在哪里？"
+            },
+            {
+              "speaker": "B",
+              "en": "They are with my grandpa and grandma.",
+              "zh": "他们和我的爷爷奶奶在一起。"
             }
           ]
         }
@@ -121,8 +146,8 @@ export const grade2: Grade = {
           "zh": "脸颊",
           "emoji": "😊",
           "example": {
-            "en": "My cheek is warm.",
-            "zh": "我的脸颊很暖。"
+            "en": "Touch your cheek.",
+            "zh": "摸摸你的脸颊。"
           }
         },
         {
@@ -141,8 +166,8 @@ export const grade2: Grade = {
           "zh": "脖子",
           "emoji": "🧣",
           "example": {
-            "en": "My neck is warm.",
-            "zh": "我的脖子很暖和。"
+            "en": "The scarf keeps my neck warm.",
+            "zh": "围巾让我的脖子暖和。"
           }
         },
         {
@@ -151,8 +176,8 @@ export const grade2: Grade = {
           "zh": "脚踝",
           "emoji": "🦶",
           "example": {
-            "en": "My ankle is fine.",
-            "zh": "我的脚踝很好。"
+            "en": "Touch your ankle.",
+            "zh": "摸摸你的脚踝。"
           }
         },
         {
@@ -181,8 +206,8 @@ export const grade2: Grade = {
           "zh": "脚趾",
           "emoji": "🦶",
           "example": {
-            "en": "My toe is small.",
-            "zh": "我的脚趾很小。"
+            "en": "This is my big toe.",
+            "zh": "这是我的大脚趾。"
           }
         },
         {
@@ -191,24 +216,34 @@ export const grade2: Grade = {
           "zh": "肩膀",
           "emoji": "🫷",
           "example": {
-            "en": "My shoulder is strong.",
-            "zh": "我的肩膀很有力。"
+            "en": "Touch your shoulder.",
+            "zh": "摸摸你的肩膀。"
           }
         }
       ],
       "dialogues": [
         {
-          "title": "身体练习",
+          "title": "一起做动作",
           "lines": [
             {
               "speaker": "A",
-              "en": "I can see cheek, hair, neck, and ankle.",
-              "zh": "我能看见脸颊、头发、脖子和脚踝。"
+              "en": "Touch your shoulder, please.",
+              "zh": "请摸摸你的肩膀。"
             },
             {
               "speaker": "B",
-              "en": "We can also learn knee, finger, toe, and shoulder.",
-              "zh": "我们还可以学习膝盖、手指、脚趾和肩膀。"
+              "en": "Like this?",
+              "zh": "像这样吗？"
+            },
+            {
+              "speaker": "A",
+              "en": "Yes! Now touch your knee.",
+              "zh": "对！现在摸摸你的膝盖。"
+            },
+            {
+              "speaker": "B",
+              "en": "Here is my knee.",
+              "zh": "我的膝盖在这里。"
             }
           ]
         }
@@ -245,8 +280,8 @@ export const grade2: Grade = {
           "zh": "酸奶",
           "emoji": "🥣",
           "example": {
-            "en": "This yogurt is nice.",
-            "zh": "这个酸奶很好喝。"
+            "en": "This yogurt is tasty.",
+            "zh": "这份酸奶很好吃。"
           }
         },
         {
@@ -265,7 +300,7 @@ export const grade2: Grade = {
           "zh": "糖果",
           "emoji": "🍬",
           "example": {
-            "en": "I have one candy.",
+            "en": "I have a piece of candy.",
             "zh": "我有一颗糖。"
           }
         },
@@ -281,11 +316,11 @@ export const grade2: Grade = {
         },
         {
           "id": "2-3-7",
-          "en": "rice noodle",
+          "en": "rice noodles",
           "zh": "米线",
           "emoji": "🍜",
           "example": {
-            "en": "Rice noodle is hot.",
+            "en": "The rice noodles are hot.",
             "zh": "米线是热的。"
           }
         },
@@ -302,17 +337,52 @@ export const grade2: Grade = {
       ],
       "dialogues": [
         {
-          "title": "食物练习",
+          "title": "吃早餐",
           "lines": [
             {
               "speaker": "A",
-              "en": "I can see toast, fried rice, yogurt, and cupcake.",
-              "zh": "我能看见吐司、炒饭、酸奶和纸杯蛋糕。"
+              "en": "What would you like?",
+              "zh": "你想吃什么？"
             },
             {
               "speaker": "B",
-              "en": "We can also learn candy, orange juice, rice noodle, and lemonade.",
-              "zh": "我们还可以学习糖果、橙汁、米线和柠檬水。"
+              "en": "I'd like some toast, please.",
+              "zh": "我想要一些吐司，谢谢。"
+            },
+            {
+              "speaker": "A",
+              "en": "Would you like some yogurt?",
+              "zh": "你想要一些酸奶吗？"
+            },
+            {
+              "speaker": "B",
+              "en": "Yes, please.",
+              "zh": "好的，谢谢。"
+            }
+          ]
+        },
+        {
+          "title": "选午餐",
+          "lines": [
+            {
+              "speaker": "A",
+              "en": "Do you like fried rice?",
+              "zh": "你喜欢炒饭吗？"
+            },
+            {
+              "speaker": "B",
+              "en": "Yes, I do. I like rice noodles, too.",
+              "zh": "是的，我喜欢。我也喜欢米线。"
+            },
+            {
+              "speaker": "A",
+              "en": "What would you like to drink?",
+              "zh": "你想喝什么？"
+            },
+            {
+              "speaker": "B",
+              "en": "Orange juice, please.",
+              "zh": "请给我橙汁。"
             }
           ]
         }
@@ -376,7 +446,7 @@ export const grade2: Grade = {
         {
           "id": "2-4-6",
           "en": "dress",
-          "zh": "裙子",
+          "zh": "连衣裙",
           "emoji": "👗",
           "example": {
             "en": "The dress is pretty.",
@@ -406,17 +476,27 @@ export const grade2: Grade = {
       ],
       "dialogues": [
         {
-          "title": "衣服练习",
+          "title": "准备出门",
           "lines": [
             {
               "speaker": "A",
-              "en": "I can see hat, shirt, pants, and shoes.",
-              "zh": "我能看见帽子、衬衫、裤子和鞋子。"
+              "en": "Where are my shoes?",
+              "zh": "我的鞋子在哪里？"
             },
             {
               "speaker": "B",
-              "en": "We can also learn socks, dress, coat, and uniform.",
-              "zh": "我们还可以学习袜子、裙子、外套和校服。"
+              "en": "They are by the door.",
+              "zh": "它们在门旁边。"
+            },
+            {
+              "speaker": "A",
+              "en": "It's cold. Put on your coat.",
+              "zh": "天气冷，穿上你的外套。"
+            },
+            {
+              "speaker": "B",
+              "en": "Okay. And my hat!",
+              "zh": "好的。还有我的帽子！"
             }
           ]
         }
@@ -493,8 +573,8 @@ export const grade2: Grade = {
           "zh": "地板",
           "emoji": "🟫",
           "example": {
-            "en": "This is a floor.",
-            "zh": "这是地板。"
+            "en": "The floor is clean.",
+            "zh": "地板很干净。"
           }
         },
         {
@@ -590,27 +670,27 @@ export const grade2: Grade = {
       ],
       "dialogues": [
         {
-          "title": "家居物品练习",
+          "title": "找钥匙",
           "lines": [
             {
               "speaker": "A",
-              "en": "I can see door, window, table, and sofa.",
-              "zh": "我能看见门、窗户、桌子和沙发。"
+              "en": "Where is my key?",
+              "zh": "我的钥匙在哪里？"
             },
             {
               "speaker": "B",
-              "en": "We can also learn bed, lamp, floor, and wall.",
-              "zh": "我们还可以学习床、台灯、地板和墙。"
+              "en": "It's on the table.",
+              "zh": "它在桌子上。"
             },
             {
               "speaker": "A",
-              "en": "I can see room, kitchen, bathroom, and key.",
-              "zh": "我能看见房间、厨房、浴室和钥匙。"
+              "en": "In the kitchen?",
+              "zh": "在厨房里吗？"
             },
             {
               "speaker": "B",
-              "en": "We can also learn clock, cup, plate, and spoon.",
-              "zh": "我们还可以学习钟、杯子、盘子和勺子。"
+              "en": "Yes, next to the cup.",
+              "zh": "是的，在杯子旁边。"
             }
           ]
         }
@@ -774,7 +854,7 @@ export const grade2: Grade = {
         {
           "id": "2-6-16",
           "en": "cube",
-          "zh": "方块",
+          "zh": "立方体",
           "emoji": "🧊",
           "example": {
             "en": "This is a cube.",
@@ -784,27 +864,27 @@ export const grade2: Grade = {
       ],
       "dialogues": [
         {
-          "title": "玩具与游戏练习",
+          "title": "一起玩",
           "lines": [
             {
               "speaker": "A",
-              "en": "I can see yo-yo, teddy bear, puppet, and spinning top.",
-              "zh": "我能看见悠悠球、泰迪熊、木偶和陀螺。"
+              "en": "Is this your teddy bear?",
+              "zh": "这是你的泰迪熊吗？"
             },
             {
               "speaker": "B",
-              "en": "We can also learn balloon, drum, puzzle, and block.",
-              "zh": "我们还可以学习气球、鼓、拼图和积木。"
+              "en": "Yes. Do you want to play?",
+              "zh": "是的。你想一起玩吗？"
             },
             {
               "speaker": "A",
-              "en": "I can see car, boat, plane, and train.",
-              "zh": "我能看见小汽车、小船、飞机和火车。"
+              "en": "Let's do this puzzle.",
+              "zh": "我们来拼这个拼图吧。"
             },
             {
               "speaker": "B",
-              "en": "We can also learn bike, game, card, and cube.",
-              "zh": "我们还可以学习自行车、游戏、卡片和方块。"
+              "en": "Good idea!",
+              "zh": "好主意！"
             }
           ]
         }
@@ -821,8 +901,8 @@ export const grade2: Grade = {
           "zh": "十一",
           "emoji": "1️⃣1️⃣",
           "example": {
-            "en": "We learn eleven today.",
-            "zh": "今天我们学习十一。"
+            "en": "I have eleven crayons.",
+            "zh": "我有十一支蜡笔。"
           }
         },
         {
@@ -831,8 +911,8 @@ export const grade2: Grade = {
           "zh": "十二",
           "emoji": "1️⃣2️⃣",
           "example": {
-            "en": "We learn twelve today.",
-            "zh": "今天我们学习十二。"
+            "en": "I have twelve crayons.",
+            "zh": "我有十二支蜡笔。"
           }
         },
         {
@@ -841,8 +921,8 @@ export const grade2: Grade = {
           "zh": "十三",
           "emoji": "1️⃣3️⃣",
           "example": {
-            "en": "We learn thirteen today.",
-            "zh": "今天我们学习十三。"
+            "en": "I have thirteen crayons.",
+            "zh": "我有十三支蜡笔。"
           }
         },
         {
@@ -851,8 +931,8 @@ export const grade2: Grade = {
           "zh": "十四",
           "emoji": "1️⃣4️⃣",
           "example": {
-            "en": "We learn fourteen today.",
-            "zh": "今天我们学习十四。"
+            "en": "I have fourteen crayons.",
+            "zh": "我有十四支蜡笔。"
           }
         },
         {
@@ -861,8 +941,8 @@ export const grade2: Grade = {
           "zh": "十五",
           "emoji": "1️⃣5️⃣",
           "example": {
-            "en": "We learn fifteen today.",
-            "zh": "今天我们学习十五。"
+            "en": "I have fifteen crayons.",
+            "zh": "我有十五支蜡笔。"
           }
         },
         {
@@ -871,8 +951,8 @@ export const grade2: Grade = {
           "zh": "十六",
           "emoji": "1️⃣6️⃣",
           "example": {
-            "en": "We learn sixteen today.",
-            "zh": "今天我们学习十六。"
+            "en": "I have sixteen crayons.",
+            "zh": "我有十六支蜡笔。"
           }
         },
         {
@@ -881,8 +961,8 @@ export const grade2: Grade = {
           "zh": "十七",
           "emoji": "1️⃣7️⃣",
           "example": {
-            "en": "We learn seventeen today.",
-            "zh": "今天我们学习十七。"
+            "en": "I have seventeen crayons.",
+            "zh": "我有十七支蜡笔。"
           }
         },
         {
@@ -891,8 +971,8 @@ export const grade2: Grade = {
           "zh": "十八",
           "emoji": "1️⃣8️⃣",
           "example": {
-            "en": "We learn eighteen today.",
-            "zh": "今天我们学习十八。"
+            "en": "I have eighteen crayons.",
+            "zh": "我有十八支蜡笔。"
           }
         },
         {
@@ -901,8 +981,8 @@ export const grade2: Grade = {
           "zh": "十九",
           "emoji": "1️⃣9️⃣",
           "example": {
-            "en": "We learn nineteen today.",
-            "zh": "今天我们学习十九。"
+            "en": "I have nineteen crayons.",
+            "zh": "我有十九支蜡笔。"
           }
         },
         {
@@ -911,8 +991,8 @@ export const grade2: Grade = {
           "zh": "二十",
           "emoji": "2️⃣0️⃣",
           "example": {
-            "en": "We learn twenty today.",
-            "zh": "今天我们学习二十。"
+            "en": "I have twenty crayons.",
+            "zh": "我有二十支蜡笔。"
           }
         },
         {
@@ -921,8 +1001,8 @@ export const grade2: Grade = {
           "zh": "圆形",
           "emoji": "⭕",
           "example": {
-            "en": "We learn circle today.",
-            "zh": "今天我们学习圆形。"
+            "en": "Draw a circle, please.",
+            "zh": "请画一个圆形。"
           }
         },
         {
@@ -931,8 +1011,8 @@ export const grade2: Grade = {
           "zh": "正方形",
           "emoji": "⬜",
           "example": {
-            "en": "We learn square today.",
-            "zh": "今天我们学习正方形。"
+            "en": "Draw a square, please.",
+            "zh": "请画一个正方形。"
           }
         },
         {
@@ -941,8 +1021,8 @@ export const grade2: Grade = {
           "zh": "三角形",
           "emoji": "🔺",
           "example": {
-            "en": "We learn triangle today.",
-            "zh": "今天我们学习三角形。"
+            "en": "Draw a triangle, please.",
+            "zh": "请画一个三角形。"
           }
         },
         {
@@ -951,8 +1031,8 @@ export const grade2: Grade = {
           "zh": "星星",
           "emoji": "⭐",
           "example": {
-            "en": "We learn star today.",
-            "zh": "今天我们学习星星。"
+            "en": "Draw a star, please.",
+            "zh": "请画一个星星。"
           }
         },
         {
@@ -961,8 +1041,8 @@ export const grade2: Grade = {
           "zh": "爱心",
           "emoji": "❤️",
           "example": {
-            "en": "We learn heart today.",
-            "zh": "今天我们学习爱心。"
+            "en": "Draw a heart, please.",
+            "zh": "请画一个爱心。"
           }
         },
         {
@@ -971,34 +1051,34 @@ export const grade2: Grade = {
           "zh": "形状",
           "emoji": "🔷",
           "example": {
-            "en": "We learn shape today.",
-            "zh": "今天我们学习形状。"
+            "en": "What shape is it?",
+            "zh": "它是什么形状？"
           }
         }
       ],
       "dialogues": [
         {
-          "title": "数字与形状练习",
+          "title": "数一数，画一画",
           "lines": [
             {
-              "speaker": "Teacher",
-              "en": "Today we learn eleven, twelve, thirteen, and fourteen.",
-              "zh": "今天我们学习十一、十二、十三和十四。"
+              "speaker": "A",
+              "en": "How many crayons do you have?",
+              "zh": "你有多少支蜡笔？"
             },
             {
-              "speaker": "Student",
-              "en": "We also learn fifteen, sixteen, seventeen, and eighteen.",
-              "zh": "我们还学习十五、十六、十七和十八。"
+              "speaker": "B",
+              "en": "I have twelve crayons.",
+              "zh": "我有十二支蜡笔。"
             },
             {
-              "speaker": "Teacher",
-              "en": "Can you say nineteen, twenty, circle, and square?",
-              "zh": "你会说十九、二十、圆形和正方形吗？"
+              "speaker": "A",
+              "en": "Can you draw a circle?",
+              "zh": "你会画一个圆形吗？"
             },
             {
-              "speaker": "Student",
-              "en": "Yes. Let us practice triangle, star, heart, and shape.",
-              "zh": "会的。让我们练习三角形、星星、爱心和形状。"
+              "speaker": "B",
+              "en": "Yes. I can draw a triangle, too.",
+              "zh": "会。我还会画三角形。"
             }
           ]
         }
@@ -1055,8 +1135,8 @@ export const grade2: Grade = {
           "zh": "读",
           "emoji": "📚",
           "example": {
-            "en": "I can read.",
-            "zh": "我会读。"
+            "en": "Please read this book.",
+            "zh": "请读这本书。"
           }
         },
         {
@@ -1065,8 +1145,8 @@ export const grade2: Grade = {
           "zh": "写",
           "emoji": "✍️",
           "example": {
-            "en": "I can write.",
-            "zh": "我会写。"
+            "en": "Write your name, please.",
+            "zh": "请写下你的名字。"
           }
         },
         {
@@ -1076,7 +1156,7 @@ export const grade2: Grade = {
           "emoji": "🔁",
           "example": {
             "en": "Please repeat after me.",
-            "zh": "请跟我重复。"
+            "zh": "请跟我读。"
           }
         },
         {
@@ -1085,8 +1165,8 @@ export const grade2: Grade = {
           "zh": "说",
           "emoji": "🗣️",
           "example": {
-            "en": "I can speak.",
-            "zh": "我会说。"
+            "en": "Please speak slowly.",
+            "zh": "请慢慢说。"
           }
         },
         {
@@ -1105,8 +1185,8 @@ export const grade2: Grade = {
           "zh": "指",
           "emoji": "👉",
           "example": {
-            "en": "I can point.",
-            "zh": "我会指。"
+            "en": "Point to the door.",
+            "zh": "指一指门。"
           }
         },
         {
@@ -1115,8 +1195,8 @@ export const grade2: Grade = {
           "zh": "问",
           "emoji": "❓",
           "example": {
-            "en": "I can ask.",
-            "zh": "我会问。"
+            "en": "Can I ask a question?",
+            "zh": "我可以问一个问题吗？"
           }
         },
         {
@@ -1125,8 +1205,8 @@ export const grade2: Grade = {
           "zh": "回答",
           "emoji": "💬",
           "example": {
-            "en": "I can answer.",
-            "zh": "我会回答。"
+            "en": "Please answer the question.",
+            "zh": "请回答这个问题。"
           }
         },
         {
@@ -1135,8 +1215,8 @@ export const grade2: Grade = {
           "zh": "拼写",
           "emoji": "🔤",
           "example": {
-            "en": "I can spell.",
-            "zh": "我会拼写。"
+            "en": "Can you spell your name?",
+            "zh": "你会拼写自己的名字吗？"
           }
         },
         {
@@ -1145,8 +1225,8 @@ export const grade2: Grade = {
           "zh": "展示",
           "emoji": "📣",
           "example": {
-            "en": "I can show.",
-            "zh": "我会展示。"
+            "en": "Show me your book.",
+            "zh": "给我看看你的书。"
           }
         },
         {
@@ -1155,8 +1235,8 @@ export const grade2: Grade = {
           "zh": "涂色",
           "emoji": "🖍️",
           "example": {
-            "en": "I can color.",
-            "zh": "我会涂色。"
+            "en": "Color the star yellow.",
+            "zh": "把星星涂成黄色。"
           }
         },
         {
@@ -1165,34 +1245,59 @@ export const grade2: Grade = {
           "zh": "数数",
           "emoji": "🔢",
           "example": {
-            "en": "I can count.",
-            "zh": "我会数数。"
+            "en": "Count the apples, please.",
+            "zh": "请数一数苹果。"
           }
         }
       ],
       "dialogues": [
         {
-          "title": "课堂动作练习",
+          "title": "课堂小游戏",
           "lines": [
             {
               "speaker": "Teacher",
-              "en": "Please clap, jump, turn, and touch.",
-              "zh": "请拍手、跳、转身和触摸。"
+              "en": "Please clap your hands.",
+              "zh": "请拍拍手。"
             },
             {
               "speaker": "Student",
-              "en": "Okay. I can read, write, repeat, and speak.",
-              "zh": "好的。我会读、写、重复和说。"
+              "en": "Like this?",
+              "zh": "像这样吗？"
             },
             {
               "speaker": "Teacher",
-              "en": "Please underline, point, ask, and answer.",
-              "zh": "请划线、指、问和回答。"
+              "en": "Yes! Now point to the door.",
+              "zh": "对！现在指一指门。"
             },
             {
               "speaker": "Student",
-              "en": "Okay. I can spell, show, color, and count.",
-              "zh": "好的。我会拼写、展示、涂色和数数。"
+              "en": "Here it is.",
+              "zh": "门在这里。"
+            }
+          ]
+        },
+        {
+          "title": "读写时间",
+          "lines": [
+            {
+              "speaker": "Teacher",
+              "en": "Can you read this word?",
+              "zh": "你会读这个单词吗？"
+            },
+            {
+              "speaker": "Student",
+              "en": "Yes. It's apple.",
+              "zh": "会。是 apple。"
+            },
+            {
+              "speaker": "Teacher",
+              "en": "Can you spell it?",
+              "zh": "你会拼写它吗？"
+            },
+            {
+              "speaker": "Student",
+              "en": "A-P-P-L-E.",
+              "zh": "A-P-P-L-E。"
             }
           ]
         }
@@ -1250,7 +1355,7 @@ export const grade2: Grade = {
           "emoji": "🌧️",
           "example": {
             "en": "I can see the rain.",
-            "zh": "这是雨。"
+            "zh": "我能看见雨。"
           }
         },
         {
@@ -1260,7 +1365,7 @@ export const grade2: Grade = {
           "emoji": "💨",
           "example": {
             "en": "The wind is strong.",
-            "zh": "这是风。"
+            "zh": "风很大。"
           }
         },
         {
@@ -1300,7 +1405,7 @@ export const grade2: Grade = {
           "emoji": "🌿",
           "example": {
             "en": "The grass is green.",
-            "zh": "这是草。"
+            "zh": "草是绿色的。"
           }
         },
         {
@@ -1366,27 +1471,27 @@ export const grade2: Grade = {
       ],
       "dialogues": [
         {
-          "title": "身边自然练习",
+          "title": "公园散步",
           "lines": [
             {
-              "speaker": "Teacher",
-              "en": "I can see sun, moon, sky, and cloud.",
-              "zh": "我能看见太阳、月亮、天空和云。"
+              "speaker": "A",
+              "en": "Look at the butterfly!",
+              "zh": "看那只蝴蝶！"
             },
             {
-              "speaker": "Student",
-              "en": "We also see rain, wind, tree, and leaf.",
-              "zh": "我们还看见雨、风、树和树叶。"
+              "speaker": "B",
+              "en": "It's on the flower.",
+              "zh": "它在花上。"
             },
             {
-              "speaker": "Teacher",
-              "en": "Do you know flower, grass, river, and hill?",
-              "zh": "你知道花、草、河和小山吗？"
+              "speaker": "A",
+              "en": "Can you see the pond?",
+              "zh": "你能看见池塘吗？"
             },
             {
-              "speaker": "Student",
-              "en": "Yes. Let us learn butterfly, bee, pond, and stone.",
-              "zh": "知道。让我们学习蝴蝶、蜜蜂、池塘和石头。"
+              "speaker": "B",
+              "en": "Yes, it's next to the tree.",
+              "zh": "能，它在树旁边。"
             }
           ]
         }
@@ -1449,12 +1554,12 @@ export const grade2: Grade = {
         },
         {
           "id": "2-10-6",
-          "en": "post",
+          "en": "post office",
           "zh": "邮局",
           "emoji": "📮",
           "example": {
-            "en": "This is a post.",
-            "zh": "这是邮局。"
+            "en": "This is a post office.",
+            "zh": "这是一家邮局。"
           }
         },
         {
@@ -1560,27 +1665,27 @@ export const grade2: Grade = {
       ],
       "dialogues": [
         {
-          "title": "城镇地点练习",
+          "title": "问路",
           "lines": [
             {
-              "speaker": "Teacher",
-              "en": "I can see road, bridge, shop, and market.",
-              "zh": "我能看见道路、桥、商店和市场。"
+              "speaker": "A",
+              "en": "Where is the post office?",
+              "zh": "邮局在哪里？"
             },
             {
-              "speaker": "Student",
-              "en": "We also see bank, post, office, and street.",
-              "zh": "我们还看见银行、邮局、办公室和街道。"
+              "speaker": "B",
+              "en": "It's next to the bank.",
+              "zh": "它在银行旁边。"
             },
             {
-              "speaker": "Teacher",
-              "en": "Do you know station, playground, garden, and store?",
-              "zh": "你知道车站、操场、花园和店铺吗？"
+              "speaker": "A",
+              "en": "Is the library near here?",
+              "zh": "图书馆在附近吗？"
             },
             {
-              "speaker": "Student",
-              "en": "Yes. Let us learn library, museum, cinema, and bakery.",
-              "zh": "知道。让我们学习图书馆、博物馆、电影院和面包店。"
+              "speaker": "B",
+              "en": "Yes. It's across the street.",
+              "zh": "是的。它在街道对面。"
             }
           ]
         }
@@ -1624,7 +1729,7 @@ export const grade2: Grade = {
         {
           "id": "2-11-4",
           "en": "many",
-          "zh": "许多/多少",
+          "zh": "许多（how many：多少）",
           "emoji": "🔢",
           "example": {
             "en": "How many books?",
@@ -1694,52 +1799,27 @@ export const grade2: Grade = {
       ],
       "dialogues": [
         {
-          "title": "问答练习",
+          "title": "书包里有什么",
           "lines": [
             {
               "speaker": "A",
-              "en": "What is this?",
-              "zh": "这是什么？"
+              "en": "What do you have in your bag?",
+              "zh": "你的书包里有什么？"
             },
             {
               "speaker": "B",
-              "en": "It is a book.",
-              "zh": "它是一本书。"
+              "en": "I have a book and a ruler.",
+              "zh": "我有一本书和一把尺子。"
             },
             {
               "speaker": "A",
-              "en": "Where do you go?",
-              "zh": "你去哪里？"
+              "en": "Can you read the book?",
+              "zh": "你会读这本书吗？"
             },
             {
               "speaker": "B",
-              "en": "I go to school.",
-              "zh": "我去学校。"
-            }
-          ]
-        },
-        {
-          "title": "课堂对话",
-          "lines": [
-            {
-              "speaker": "Teacher",
-              "en": "How many books do you have?",
-              "zh": "你有多少本书？"
-            },
-            {
-              "speaker": "Student",
-              "en": "I have many books.",
-              "zh": "我有很多书。"
-            },
-            {
-              "speaker": "Teacher",
-              "en": "Can you come here? I want you to read.",
-              "zh": "你能来这里吗？我想让你读一读。"
-            },
-            {
-              "speaker": "Student",
-              "en": "Yes, I can do it.",
-              "zh": "是的，我能做到。"
+              "en": "Yes. Come and read with me!",
+              "zh": "会。来和我一起读吧！"
             }
           ]
         }

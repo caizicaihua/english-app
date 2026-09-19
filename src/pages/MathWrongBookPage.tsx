@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { generateFocusedQuestions } from '../data/mathSkills'
+import type { MathQuestion } from '../data/math'
 import { loadMathProgress, removeMathWrongQuestion, saveMathProgress } from '../utils/storage'
 
 export default function MathWrongBookPage() {
@@ -17,6 +19,18 @@ export default function MathWrongBookPage() {
     if (progress.wrongQuestions.length === 0) return
 
     navigate('/math/practice?mode=review')
+  }
+
+  const handleTransfer = (question: MathQuestion) => {
+    if (!question.skillId) return
+    const alternate = generateFocusedQuestions(question.skillId, 1, Math.random, [question.reviewKey])[0]
+    if (!alternate) return
+    navigate(`/math/practice?mode=review&reviewId=${encodeURIComponent(question.reviewKey)}`, {
+      state: {
+        title: '换数字再试一题',
+        reviewQuestions: [{ ...alternate, sourceReviewKey: question.reviewKey }],
+      },
+    })
   }
 
   return (
@@ -82,6 +96,8 @@ export default function MathWrongBookPage() {
                     移除
                   </button>
                 </div>
+                {item.question.explanation && <p className="mt-3 text-sm leading-6 text-gray-500">{item.question.explanation}</p>}
+                {item.question.skillId && <button onClick={() => handleTransfer(item.question)} className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-600">换数字再试一题</button>}
               </motion.div>
             ))}
           </AnimatePresence>

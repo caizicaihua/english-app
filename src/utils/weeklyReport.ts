@@ -1,8 +1,10 @@
+import type { BridgePlanSettings } from '../data/bridgePlan'
+import { getMathSkill } from '../data/mathSkills'
 import type { MathProgressData } from '../data/math'
 import { gradeCatalog } from '../data/words'
 import type { ProgressData } from './storage'
 import { getLocalDateKey } from './storage'
-import { getDailyTaskIds } from './studyPlan'
+import { getDailyTaskIds, getStudyDayStatus } from './studyPlan'
 
 export interface WeeklyUnitConcern {
   unitKey: string
@@ -35,6 +37,16 @@ export interface WeeklyReport {
   mathAverageSeconds: number | null
   concerns: WeeklyUnitConcern[]
   suggestions: string[]
+  currentGradeName: string
+  currentGradeMasteredCount: number
+  currentGradeTotal: number
+  currentGradeMasteryRate: number
+  scheduledStudyDays: number
+  completedStudyDays: number
+  scheduleCompletionRate: number | null
+  scheduleKnownFrom?: string
+  englishSkills: Array<{ skill: string; label: string; total: number; correct: number }>
+  mathSkills: Array<{ skillId: string; title: string; total: number; correct: number; accuracy: number }>
 }
 
 function parseLocalDateKey(dateKey: string): Date {
@@ -81,12 +93,12 @@ function hasPrioritySignal(progress: ProgressData, wordId: string): boolean {
   )
 }
 
-function getUnitConcerns(progress: ProgressData): WeeklyUnitConcern[] {
-  const grade1 = gradeCatalog.find(grade => grade.id === 1)
+function getUnitConcerns(progress: ProgressData, gradeId = 1): WeeklyUnitConcern[] {
+  const grade1 = gradeCatalog.find(grade => grade.id === gradeId)
   if (!grade1) return []
 
   return grade1.units.flatMap(unit => {
-    const unitKey = `1-${unit.id}`
+    const unitKey = `${gradeId}-${unit.id}`
     const states = unit.wordIds.map(wordId => progress.wordMastery[wordId])
     const masteredCount = states.filter(state => (state?.level ?? 0) >= 3).length
     const lowMasteryCount = states.filter(state => (
@@ -139,21 +151,20 @@ function buildSuggestions(report: Omit<WeeklyReport, 'suggestions'>): string[] {
     suggestions.push(
       `下周先复习“${report.concerns[0].unitName}”，每天只取今日任务里的少量词即可。`,
     )
-  } else if (report.grade1MasteryRate >= 80) {
-    suggestions.push('一年级基础较稳，可以继续保持复习上限，并逐步加入二年级预习。')
   } else {
-    suggestions.push('继续先做一年级到期复习，不需要为了赶进度额外加量。')
+    suggestions.push('英语跟随当前主题，先听懂一句，再试着在生活里说一句，不急着增加新词。')
   }
 
   if (report.mathAttemptCount === 0) {
-    suggestions.push('下周安排 2 次 20 题数学快速练，保持计算手感即可。')
+    suggestions.push('数学从学校正在学的知识点开始，做一组不限时短练习。')
   } else if ((report.mathAccuracy ?? 100) < 80) {
-    suggestions.push('数学先看错题本中的高频题型，暂时不用增加到 100 题整卷。')
+    const concern = [...report.mathSkills].filter(item => item.total >= 5).sort((a, b) => a.accuracy - b.accuracy)[0]
+    suggestions.push(concern ? `数学先回看“${concern.title}”的解题提示，再换数字练一组；不需要加快速度。` : '数学先看错题的解题提示，再换数字验证，少量记录暂不足以判断薄弱知识点。')
   } else {
-    suggestions.push('数学正确率稳定，继续以 20 题快速练为主，每周最多做一次整卷。')
+    suggestions.push('数学继续以不限时专项为主，先理解，再尝试不同数字和情境。')
   }
 
-  if (report.plannedTaskCount > 0 && (report.completionRate ?? 100) < 70) {
+  if ((report.scheduleCompletionRate ?? report.completionRate ?? 100) < 70) {
     suggestions.push('本周完成率偏低，下周可减少学习天数或时长，不需要补做欠下的任务。')
   } else {
     suggestions.push('保持当前轻量节奏，完成当天任务后就停止，不追加练习。')
@@ -166,26 +177,28 @@ export function buildWeeklyReport(
   progress: ProgressData,
   mathProgress: MathProgressData,
   date = new Date(),
+  settings?: BridgePlanSettings,
 ): WeeklyReport {
   const { startDate, endDate } = getLocalWeekRange(date)
+  const today = getLocalDateKey(date)
+  const cutoffDate = today < endDate ? today : endDate
   const weeklyPlans = Object.values(progress.dailyPlans)
-    .filter(plan => plan.date >= startDate && plan.date <= endDate)
+    .filter(plan => plan.date >= startDate && plan.date <= cutoffDate)
   const plannedTaskCount = weeklyPlans
     .reduce((sum, plan) => sum + getDailyTaskIds(plan).length, 0)
   const completedTaskCount = weeklyPlans
-    .reduce((sum, plan) => sum + plan.completedTaskIds.length, 0)
+    .reduce((sum, plan) => sum + getDailyTaskIds(plan).filter(id => plan.completedTaskIds.includes(id)).length, 0)
   const weeklySessions = progress.studySessions
-    .filter(session => session.date >= startDate && session.date <= endDate)
+    .filter(session => session.date >= startDate && session.date <= cutoffDate)
   const weeklyMathAttempts = mathProgress.attemptHistory.filter(attempt => (
-    attempt.mode !== 'review'
-    && isDateInRange(attempt.completedAt, startDate, endDate)
+    isDateInRange(attempt.completedAt, startDate, cutoffDate)
   ))
   const dailyWordEntries = Object.entries(progress.dailyWords)
-    .filter(([dateKey, count]) => dateKey >= startDate && dateKey <= endDate && count > 0)
+    .filter(([dateKey, count]) => dateKey >= startDate && dateKey <= cutoffDate && count > 0)
   const dailyWordIdEntries = Object.entries(progress.dailyWordIds)
-    .filter(([dateKey]) => dateKey >= startDate && dateKey <= endDate)
+    .filter(([dateKey]) => dateKey >= startDate && dateKey <= cutoffDate)
   const firstSeenEntries = Object.entries(progress.wordMastery)
-    .filter(([, state]) => isDateInRange(state.firstSeenAt, startDate, endDate))
+    .filter(([, state]) => isDateInRange(state.firstSeenAt, startDate, cutoffDate))
   const firstSeenStates = firstSeenEntries.map(([, state]) => state)
   const firstSeenCount = firstSeenStates.length
   const newWordIds = new Set([
@@ -199,10 +212,12 @@ export function buildWeeklyReport(
     sum + Math.max(0, count - (explicitDailyCounts.get(dateKey) ?? 0))
   ), 0)
   const masteredStates = Object.values(progress.wordMastery)
-    .filter(state => isDateInRange(state.lastMasteredAt, startDate, endDate))
+    .filter(state => isDateInRange(state.lastMasteredAt, startDate, cutoffDate))
   const masteredWordCount = masteredStates.length
+  const evidence = (progress.englishEvidence ?? []).filter(item => isDateInRange(item.recordedAt, startDate, cutoffDate))
   const studyDates = new Set([
     ...weeklySessions.map(session => session.date),
+    ...evidence.map(item => getLocalDateKey(new Date(item.recordedAt))),
     ...weeklyMathAttempts.map(attempt => getLocalDateKey(new Date(attempt.completedAt))),
     ...dailyWordEntries.map(([dateKey]) => dateKey),
     ...firstSeenStates.map(state => getLocalDateKey(new Date(state.firstSeenAt!))),
@@ -228,7 +243,41 @@ export function buildWeeklyReport(
     .reduce((sum, attempt) => sum + attempt.correctCount, 0)
   const mathQuestionCount = weeklyMathAttempts
     .reduce((sum, attempt) => sum + attempt.totalCount, 0)
-  const concerns = getUnitConcerns(progress)
+  const currentGrade = gradeCatalog.find(grade => grade.id === (settings?.gradeId ?? 2))!
+  const currentWordIds = currentGrade.units.flatMap(unit => unit.wordIds)
+  const currentGradeMasteredCount = currentWordIds.filter(id => (progress.wordMastery[id]?.level ?? 0) >= 3).length
+  const concerns = getUnitConcerns(progress, settings?.gradeId)
+  const history = [...(progress.planSettingsHistory ?? [])].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate))
+  let scheduledStudyDays = 0
+  let completedStudyDays = 0
+  for (let day = startDate; day <= cutoffDate; day = addLocalDays(day, 1)) {
+    const savedPlan = progress.dailyPlans[day]
+    const taskIds = savedPlan ? getDailyTaskIds(savedPlan) : []
+    const snapshot = history.filter(item => item.effectiveDate <= day).at(-1)
+    const scheduled = taskIds.length > 0 || (!!snapshot && getStudyDayStatus(parseLocalDateKey(day), snapshot.settings) === 'study')
+    if (!scheduled) continue
+    scheduledStudyDays += 1
+    if (savedPlan && taskIds.length > 0 && taskIds.every(id => savedPlan.completedTaskIds.includes(id))) completedStudyDays += 1
+  }
+  const englishSkills = [
+    { skill: 'listening', label: '听辨' }, { skill: 'reading', label: '认读与理解' },
+    { skill: 'spelling', label: '拼写' }, { skill: 'speaking', label: '家长确认表达' },
+  ].map(item => {
+    const records = evidence.filter(record => record.skill === item.skill)
+    return { ...item, total: records.length, correct: records.filter(record => record.correct).length }
+  })
+  const mathSkillMap = new Map<string, { skillId: string; title: string; total: number; correct: number }>()
+  for (const attempt of weeklyMathAttempts) {
+    for (const result of attempt.questions) {
+      const skillId = result.question.skillId
+      if (!skillId) continue
+      const item = mathSkillMap.get(skillId) ?? { skillId, title: getMathSkill(skillId).title, total: 0, correct: 0 }
+      item.total += 1
+      if (result.isCorrect) item.correct += 1
+      mathSkillMap.set(skillId, item)
+    }
+  }
+  const mathSkills = [...mathSkillMap.values()].map(item => ({ ...item, accuracy: Math.round(item.correct / item.total * 100) }))
   const baseReport: Omit<WeeklyReport, 'suggestions'> = {
     startDate,
     endDate,
@@ -267,6 +316,16 @@ export function buildWeeklyReport(
       )
       : null,
     concerns,
+    currentGradeName: currentGrade.name,
+    currentGradeMasteredCount,
+    currentGradeTotal: currentWordIds.length,
+    currentGradeMasteryRate: Math.round(currentGradeMasteredCount / currentWordIds.length * 100),
+    scheduledStudyDays,
+    completedStudyDays,
+    scheduleCompletionRate: scheduledStudyDays ? Math.round(completedStudyDays / scheduledStudyDays * 100) : null,
+    scheduleKnownFrom: history[0]?.effectiveDate,
+    englishSkills,
+    mathSkills,
   }
 
   return {

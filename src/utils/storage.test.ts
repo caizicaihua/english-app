@@ -4,6 +4,7 @@ import {
   addDailyWord,
   getActiveStreak,
   getMathModeProgress,
+  getMathSkillProgress,
   getLocalDateKey,
   normalizeMathProgressData,
   normalizeProgressData,
@@ -98,6 +99,37 @@ describe('local study dates', () => {
 })
 
 describe('storage migrations', () => {
+  it('keeps all catalog grades and actual units and repairs unknown course choices', () => {
+    expect(normalizeSettingsData({ bridgePlan: { gradeId: 1, englishUnitId: 13 } }).bridgePlan)
+      .toMatchObject({ gradeId: 1, englishUnitId: 13 })
+    expect(normalizeSettingsData({ bridgePlan: { gradeId: 6, englishUnitId: 1 } }).bridgePlan.gradeId).toBe(6)
+    expect(normalizeSettingsData({ bridgePlan: { gradeId: 99, englishUnitId: 99, mathSkillId: 'missing' } }).bridgePlan)
+      .toMatchObject({ gradeId: 2, englishUnitId: 1, mathSkillId: 'addition-carry' })
+  })
+
+  it('rechecks the corrected post office content only once', () => {
+    const now = new Date(2026, 8, 19, 10)
+    const revised = normalizeProgressData({
+      learnedWords: ['2-10-6'],
+      wordMastery: { '2-10-6': { level: 4, correctStreak: 4, wrongCount: 0, lastCountedCorrectDate: '2026-09-18', lastMasteredAt: now.toISOString() } },
+    }, now)
+    expect(revised.contentRevision).toBe(1)
+    expect(revised.wrongWords).toContain('2-10-6')
+    expect(revised.wordMastery['2-10-6']).toMatchObject({ level: 1, correctStreak: 0, nextReviewDate: '2026-09-19' })
+    expect(revised.wordMastery['2-10-6'].lastMasteredAt).toBeUndefined()
+    revised.wordMastery['2-10-6'].level = 3
+    expect(normalizeProgressData(revised, now).wordMastery['2-10-6'].level).toBe(3)
+  })
+
+  it('retains recent English evidence and rejects invalid or stale evidence', () => {
+    const progress = normalizeProgressData({ englishEvidence: [
+      { id: 'current', activityId: 'a1', skill: 'listening', correct: false, recordedAt: '2026-09-19T00:00:00.000Z' },
+      { id: 'old', activityId: 'a1', skill: 'speaking', correct: true, recordedAt: '2025-09-19T00:00:00.000Z' },
+      { id: 'bad', activityId: 'a1', skill: 'other', correct: true, recordedAt: '2026-09-19T00:00:00.000Z' },
+    ] }, new Date(2026, 8, 19, 12))
+    expect(progress.englishEvidence?.map(item => item.id)).toEqual(['current'])
+  })
+
   it('migrates legacy progress and remains idempotent after the schema upgrade', () => {
     const migrationDate = new Date(2026, 6, 24, 9)
     const first = normalizeProgressData({
@@ -187,6 +219,12 @@ describe('storage migrations', () => {
         dailyMinutes: 10,
         focus: 'balanced',
         previewGrade2: false,
+        mode: 'semester',
+        gradeId: 2,
+        semester: 'upper',
+        englishUnitId: 1,
+        mathSkillId: 'addition-carry',
+        textbook: { english: '', math: '', edition: '' },
       },
     })
   })
@@ -213,6 +251,17 @@ function createMathAttempt(
 }
 
 describe('math storage by mode', () => {
+  it('tracks focused skills independently as percentages and does not double-count repeat saves', () => {
+    const empty = normalizeMathProgressData(undefined)
+    const attempt = { ...createMathAttempt('focused', 6), skillId: 'addition-carry', correctCount: 6, totalCount: 8 }
+    const once = saveMathAttempt(empty, attempt)
+    const repeated = saveMathAttempt(once, attempt)
+    const other = saveMathAttempt(repeated, { ...attempt, id: 'other', skillId: 'multiplication-concept', correctCount: 4 })
+    expect(getMathSkillProgress(other, 'addition-carry')).toMatchObject({ bestScore: 75, completedCount: 1 })
+    expect(getMathSkillProgress(other, 'multiplication-concept')).toMatchObject({ bestScore: 50, completedCount: 1 })
+    expect(other.modeProgress.focused).toBeUndefined()
+  })
+
   it('migrates the old global score into paper mode', () => {
     const legacyAttempt = createMathAttempt('paper', 82)
     const progress = normalizeMathProgressData({

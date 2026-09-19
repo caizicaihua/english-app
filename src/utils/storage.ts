@@ -32,16 +32,19 @@ import {
   type WordLearningState,
   type WordPrioritySignals,
 } from '../data/bridgePlan'
+import { gradeCatalog } from '../data/gradeCatalog'
+import { getMathSkill } from '../data/mathSkills'
 import type { SpeechSpeedPreset } from './speech'
+import { APP_STORAGE_KEYS, readStoredText, writeStoredText } from './persistence'
 import {
   createWordExposureState,
   migrateLegacyWordStates,
   recordWordResult,
 } from './mastery'
 
-const STORAGE_KEY = 'english_app_data'
-const SETTINGS_KEY = 'english_app_settings'
-const MATH_STORAGE_KEY = 'english_app_math_data'
+const STORAGE_KEY = APP_STORAGE_KEYS.progress
+const SETTINGS_KEY = APP_STORAGE_KEYS.settings
+const MATH_STORAGE_KEY = APP_STORAGE_KEYS.math
 
 const mathQuestionTypes: MathQuestionType[] = ['calc', 'fill', 'compare']
 const mathPracticeModes: MathPracticeMode[] = ['paper', 'quick', 'focused', 'review']
@@ -57,6 +60,7 @@ const studyTaskTypes: StudyTaskType[] = [
   'math',
 ]
 const dailyTaskIds: DailyTaskId[] = [
+  'english_activity',
   'diagnostic',
   'review',
   'verification',
@@ -65,7 +69,18 @@ const dailyTaskIds: DailyTaskId[] = [
   'math',
 ]
 
+export interface EnglishEvidence {
+  id: string
+  activityId: string
+  skill: 'listening' | 'reading' | 'spelling' | 'speaking'
+  correct: boolean
+  recordedAt: string
+}
+
 export interface ProgressData {
+  contentRevision?: number
+  englishEvidence?: EnglishEvidence[]
+  planSettingsHistory?: Array<{ effectiveDate: string, settings: BridgePlanSettings }>
   schemaVersion: typeof PROGRESS_SCHEMA_VERSION
   completedUnits: Record<string, number>
   learnedWords: string[]
@@ -427,6 +442,12 @@ function normalizeDailyStudyPlan(value: unknown): DailyStudyPlan | null {
       )))]
       : [],
     generatedAt,
+    ...(typeof value.startedAt === 'string' && Number.isFinite(Date.parse(value.startedAt)) ? { startedAt: value.startedAt } : {}),
+    ...(['study', 'rest', 'not-started', 'ended', 'disabled'].includes(String(value.status))
+      ? { status: value.status as DailyStudyPlan['status'] } : {}),
+    ...(toOptionalString(value.mathSkillId) ? { mathSkillId: String(value.mathSkillId) } : {}),
+    ...(isFiniteNumber(value.mathQuestionCount) ? { mathQuestionCount: Math.min(30, toNonNegativeInteger(value.mathQuestionCount)) } : {}),
+    ...(toOptionalString(value.englishActivityId) ? { englishActivityId: String(value.englishActivityId) } : {}),
   }
 }
 
@@ -442,6 +463,7 @@ function normalizeDailyStudyPlans(value: unknown): Record<string, DailyStudyPlan
 function getDefaultData(): ProgressData {
   return {
     schemaVersion: PROGRESS_SCHEMA_VERSION,
+    contentRevision: 1,
     completedUnits: {},
     learnedWords: [],
     wrongWords: [],
@@ -470,12 +492,21 @@ export function normalizeProgressData(value: unknown, now = new Date()): Progres
     ...migratedWordMastery,
     ...currentWordMastery,
   }
+  const revisedWord = wordMastery['2-10-6']
+  if (toNonNegativeInteger(value.contentRevision) < 1 && revisedWord) {
+    const nextState = { ...revisedWord, level: 1 as const, correctStreak: 0, nextReviewDate: getLocalDateKey(now) }
+    delete nextState.lastCountedCorrectDate
+    delete nextState.lastMasteredAt
+    wordMastery['2-10-6'] = nextState
+    if (!wrongWords.includes('2-10-6')) wrongWords.push('2-10-6')
+  }
   const encounteredWordIds = Object.entries(wordMastery)
     .filter(([, state]) => state.level > 0)
     .map(([wordId]) => wordId)
 
   return {
     schemaVersion: PROGRESS_SCHEMA_VERSION,
+    contentRevision: 1,
     completedUnits: normalizeNumberRecord(value.completedUnits, 1, 3),
     learnedWords: [...new Set([...learnedWords, ...encounteredWordIds])],
     wrongWords,
@@ -501,7 +532,28 @@ export function normalizeProgressData(value: unknown, now = new Date()): Progres
       : {}),
     studySessions: normalizeStudySessions(value.studySessions, now),
     dailyPlans: normalizeDailyStudyPlans(value.dailyPlans),
+    ...(Array.isArray(value.englishEvidence) ? { englishEvidence: normalizeEnglishEvidence(value.englishEvidence, now) } : {}),
+    ...(Array.isArray(value.planSettingsHistory) ? {
+      planSettingsHistory: value.planSettingsHistory.flatMap(item => (
+        isRecord(item) && isLocalDateKey(item.effectiveDate) && isRecord(item.settings)
+          ? [{ effectiveDate: item.effectiveDate, settings: normalizeBridgePlanSettings(item.settings) }]
+          : []
+      )).sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate)),
+    } : {}),
   }
+}
+
+function normalizeEnglishEvidence(value: unknown[], now: Date): EnglishEvidence[] {
+  const cutoff = new Date(now)
+  cutoff.setHours(0, 0, 0, 0)
+  cutoff.setDate(cutoff.getDate() - 179)
+  return value.flatMap(item => {
+    if (!isRecord(item) || !toOptionalString(item.id) || !toOptionalString(item.activityId)
+      || !['listening', 'reading', 'spelling', 'speaking'].includes(String(item.skill))
+      || typeof item.correct !== 'boolean' || typeof item.recordedAt !== 'string'
+      || !Number.isFinite(Date.parse(item.recordedAt)) || new Date(item.recordedAt) < cutoff) return []
+    return [{ id: String(item.id), activityId: String(item.activityId), skill: item.skill as EnglishEvidence['skill'], correct: item.correct, recordedAt: item.recordedAt }]
+  })
 }
 
 function normalizeBridgePlanSettings(value: unknown): BridgePlanSettings {
@@ -523,7 +575,20 @@ function normalizeBridgePlanSettings(value: unknown): BridgePlanSettings {
     ? value.focus
     : defaultBridgePlanSettings.focus
 
+  const grade = gradeCatalog.find(item => item.id === value.gradeId) ?? gradeCatalog.find(item => item.id === 2)!
+  const unit = grade.units.find(item => item.id === value.englishUnitId) ?? grade.units[0]
+
   return {
+    mode: value.mode === 'bridge' ? 'bridge' : 'semester',
+    gradeId: grade.id,
+    semester: value.semester === 'lower' ? 'lower' : 'upper',
+    englishUnitId: unit.id,
+    mathSkillId: getMathSkill(toOptionalString(value.mathSkillId)).id,
+    textbook: {
+      english: isRecord(value.textbook) && typeof value.textbook.english === 'string' ? value.textbook.english.slice(0, 100) : '',
+      math: isRecord(value.textbook) && typeof value.textbook.math === 'string' ? value.textbook.math.slice(0, 100) : '',
+      edition: isRecord(value.textbook) && typeof value.textbook.edition === 'string' ? value.textbook.edition.slice(0, 100) : '',
+    },
     enabled: typeof value.enabled === 'boolean'
       ? value.enabled
       : defaultBridgePlanSettings.enabled,
@@ -570,7 +635,16 @@ function normalizeMathQuestion(value: unknown): MathQuestion | null {
 
   if (!type || !id || !reviewKey || !prompt || !correctAnswer || !sectionLabel) return null
 
-  const base = { id, reviewKey, type, prompt, correctAnswer, sectionLabel }
+  const base = {
+    id, reviewKey, type, prompt, correctAnswer, sectionLabel,
+    ...(toOptionalString(value.skillId) ? { skillId: String(value.skillId) } : {}),
+    ...(value.difficulty === 1 || value.difficulty === 2 || value.difficulty === 3 ? { difficulty: value.difficulty as 1 | 2 | 3 } : {}),
+    ...(toOptionalString(value.explanation) ? { explanation: String(value.explanation) } : {}),
+    ...(toOptionalString(value.sourceReviewKey) ? { sourceReviewKey: String(value.sourceReviewKey) } : {}),
+    ...(isRecord(value.visual) && isFiniteNumber(value.visual.rows) && isFiniteNumber(value.visual.columns)
+      && value.visual.rows > 0 && value.visual.columns > 0 && value.visual.rows <= 20 && value.visual.columns <= 20
+      ? { visual: { rows: Math.floor(value.visual.rows), columns: Math.floor(value.visual.columns) } } : {}),
+  }
 
   if (type === 'calc') {
     const expression = toOptionalString(value.expression)
@@ -603,7 +677,7 @@ function normalizeMathSectionResult(value: unknown): MathSectionResult | null {
   return {
     type,
     label,
-    correctCount: toNonNegativeInteger(value.correctCount),
+    correctCount: Math.min(toNonNegativeInteger(value.correctCount), toNonNegativeInteger(value.totalCount)),
     totalCount: toNonNegativeInteger(value.totalCount),
   }
 }
@@ -619,20 +693,42 @@ function normalizeMathAttempt(value: unknown): MathAttempt | null {
 
   if (!id || !title || !completedAt || !mode) return null
 
+  const maximum = mode === 'quick' ? 20 : mode === 'paper' ? 100 : Infinity
   const questions = Array.isArray(value.questions)
     ? value.questions.flatMap(item => {
       if (!isRecord(item) || typeof item.userAnswer !== 'string' || typeof item.isCorrect !== 'boolean') {
         return []
       }
       const question = normalizeMathQuestion(item.question)
-      return question ? [{ question, userAnswer: item.userAnswer, isCorrect: item.isCorrect }] : []
-    })
+      if (!question) return []
+      const trimmed = item.userAnswer.trim()
+      const userAnswer = question.type !== 'compare' && /^\d+$/.test(trimmed) ? String(Number(trimmed)) : trimmed
+      return [{ question, userAnswer, isCorrect: userAnswer === question.correctAnswer }]
+    }).slice(0, maximum)
     : []
-  const sections = Array.isArray(value.sections)
+  const storedSections = Array.isArray(value.sections)
     ? value.sections
       .map(normalizeMathSectionResult)
       .filter((item): item is MathSectionResult => !!item)
     : []
+  let remainingSectionBudget = maximum
+  const sections = questions.length > 0
+    ? [...new Set(questions.map(item => item.question.type))].map(type => {
+      const results = questions.filter(item => item.question.type === type)
+      return { type, label: results[0].question.sectionLabel, totalCount: results.length, correctCount: results.filter(item => item.isCorrect).length }
+    })
+    : storedSections.map(section => {
+      const totalCount = Math.min(section.totalCount, remainingSectionBudget)
+      remainingSectionBudget -= totalCount
+      return { ...section, totalCount, correctCount: Math.min(section.correctCount, totalCount) }
+    })
+  // Legacy summaries may have no question details. Keep their bounded totals.
+  const totalCount = questions.length > 0 ? questions.length : sections.length > 0
+    ? sections.reduce((sum, section) => sum + section.totalCount, 0)
+    : Math.min(maximum, toNonNegativeInteger(value.totalCount))
+  const correctCount = questions.length > 0 ? questions.filter(item => item.isCorrect).length : sections.length > 0
+    ? sections.reduce((sum, section) => sum + section.correctCount, 0)
+    : Math.min(totalCount, toNonNegativeInteger(value.correctCount, toNonNegativeInteger(value.score)))
 
   return {
     id,
@@ -641,12 +737,10 @@ function normalizeMathAttempt(value: unknown): MathAttempt | null {
     completedAt,
     durationSeconds: toNonNegativeInteger(value.durationSeconds),
     timeSpentSeconds: toNonNegativeInteger(value.timeSpentSeconds),
-    totalCount: toNonNegativeInteger(value.totalCount, questions.length),
-    correctCount: toNonNegativeInteger(
-      value.correctCount,
-      questions.filter(item => item.isCorrect).length,
-    ),
-    score: toNonNegativeInteger(value.score),
+    ...(toOptionalString(value.skillId) ? { skillId: String(value.skillId) } : {}),
+    totalCount,
+    correctCount,
+    score: correctCount,
     sections,
     questions,
   }
@@ -712,12 +806,15 @@ export function normalizeMathProgressData(
     const normalized = isRecord(value.modeProgress)
       ? normalizeMathModeProgress(value.modeProgress[mode])
       : null
-    return normalized ? [[mode, normalized]] : []
+    if (!normalized) return []
+    const maximum = mode === 'quick' ? 20 : mode === 'paper' ? 100 : Infinity
+    const lastAttempt = normalized.lastAttempt?.mode === mode ? normalized.lastAttempt : null
+    return [[mode, { ...normalized, lastAttempt, bestScore: Math.min(maximum, Math.max(normalized.bestScore, lastAttempt?.score ?? 0)) }]]
   })) as Partial<Record<ScoredMathMode, MathModeProgress>>
 
   if (toNonNegativeInteger(value.schemaVersion) < MATH_SCHEMA_VERSION) {
     const legacyLastAttempt = normalizeMathAttempt(value.lastAttempt)
-    const legacyBestScore = toNonNegativeInteger(value.bestScore)
+    const legacyBestScore = Math.min(100, toNonNegativeInteger(value.bestScore))
     if (legacyLastAttempt || legacyBestScore > 0) {
       modeProgress.paper = {
         bestScore: Math.max(legacyBestScore, legacyLastAttempt?.score ?? 0),
@@ -740,6 +837,10 @@ export function normalizeMathProgressData(
   return {
     schemaVersion: MATH_SCHEMA_VERSION,
     modeProgress,
+    ...(isRecord(value.skillProgress) ? { skillProgress: Object.fromEntries(Object.entries(value.skillProgress).flatMap(([key, item]) => {
+      const normalized = normalizeMathModeProgress(item)
+      return key && normalized ? [[key, { ...normalized, bestScore: Math.min(100, normalized.bestScore) }]] : []
+    })) } : {}),
     latestAttempt,
     attemptHistory,
     wrongQuestions: Array.isArray(value.wrongQuestions)
@@ -752,21 +853,31 @@ export function normalizeMathProgressData(
 
 function loadStoredValue(key: string): unknown {
   try {
-    const raw = localStorage.getItem(key)
+    const raw = readStoredText(key)
     return raw ? JSON.parse(raw) : undefined
   } catch {
+    // Keep the original malformed value untouched so recovery remains possible.
     return undefined
   }
 }
 
 function persistStoredValue(key: string, value: unknown): void {
-  localStorage.setItem(key, JSON.stringify(value))
+  writeStoredText(key, JSON.stringify(value))
+}
+
+function migrateStoredValue(key: string, raw: unknown, normalized: { schemaVersion: number }) {
+  if (!isRecord(raw)) return
+  const oldVersion = toNonNegativeInteger(raw.schemaVersion)
+  if (oldVersion < normalized.schemaVersion
+    || (oldVersion === normalized.schemaVersion && key === STORAGE_KEY && toNonNegativeInteger(raw.contentRevision) < 1)) {
+    persistStoredValue(key, normalized)
+  }
 }
 
 export function loadProgress(): ProgressData {
   const raw = loadStoredValue(STORAGE_KEY)
   const progress = normalizeProgressData(raw)
-  if (raw !== undefined) persistStoredValue(STORAGE_KEY, progress)
+  migrateStoredValue(STORAGE_KEY, raw, progress)
   return progress
 }
 
@@ -777,7 +888,7 @@ export function saveProgress(data: ProgressData): void {
 export function loadSettings(): AppSettings {
   const raw = loadStoredValue(SETTINGS_KEY)
   const settings = normalizeSettingsData(raw)
-  if (raw !== undefined) persistStoredValue(SETTINGS_KEY, settings)
+  migrateStoredValue(SETTINGS_KEY, raw, settings)
   return settings
 }
 
@@ -788,7 +899,7 @@ export function saveSettings(settings: AppSettings): void {
 export function loadMathProgress(): MathProgressData {
   const raw = loadStoredValue(MATH_STORAGE_KEY)
   const progress = normalizeMathProgressData(raw)
-  if (raw !== undefined) persistStoredValue(MATH_STORAGE_KEY, progress)
+  migrateStoredValue(MATH_STORAGE_KEY, raw, progress)
   return progress
 }
 
@@ -979,6 +1090,10 @@ export function getMathModeProgress(
   }
 }
 
+export function getMathSkillProgress(data: MathProgressData, skillId: string): MathModeProgress {
+  return data.skillProgress?.[skillId] ?? { bestScore: 0, lastAttempt: null, completedCount: 0 }
+}
+
 export function saveMathAttempt(
   data: MathProgressData,
   attempt: MathAttempt,
@@ -997,6 +1112,22 @@ export function saveMathAttempt(
     return next
   }
 
+  if (attempt.mode === 'focused' && attempt.skillId) {
+    const current = getMathSkillProgress(data, attempt.skillId)
+    const percentage = attempt.totalCount > 0 ? Math.round(attempt.correctCount / attempt.totalCount * 100) : 0
+    return {
+      ...next,
+      skillProgress: {
+        ...data.skillProgress,
+        [attempt.skillId]: {
+          bestScore: Math.max(current.bestScore, percentage),
+          lastAttempt: attempt,
+          completedCount: current.completedCount + (data.attemptHistory.some(item => item.id === attempt.id) ? 0 : 1),
+        },
+      },
+    }
+  }
+
   const current = getMathModeProgress(data, attempt.mode)
 
   return {
@@ -1006,7 +1137,7 @@ export function saveMathAttempt(
       [attempt.mode]: {
         bestScore: Math.max(current.bestScore, attempt.score),
         lastAttempt: attempt,
-        completedCount: current.completedCount + 1,
+        completedCount: current.completedCount + (data.attemptHistory.some(item => item.id === attempt.id) ? 0 : 1),
       },
     },
   }

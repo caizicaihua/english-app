@@ -1,13 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import { formatCountdown } from '../utils/mathPaper'
-import { loadMathProgress, loadProgress } from '../utils/storage'
+import { loadMathProgress, loadProgress, loadSettings } from '../utils/storage'
 import { buildWeeklyReport } from '../utils/weeklyReport'
 
 export default function ParentReportPage() {
   const navigate = useNavigate()
-  const report = buildWeeklyReport(loadProgress(), loadMathProgress())
+  const report = buildWeeklyReport(loadProgress(), loadMathProgress(), new Date(), loadSettings().bridgePlan)
 
-  if (!report.hasActivity) {
+  if (!report.hasActivity && report.scheduledStudyDays === 0) {
     return (
       <div className="py-8 text-center">
         <div className="text-6xl">📭</div>
@@ -40,8 +40,8 @@ export default function ParentReportPage() {
         {[
           { label: '学习天数', value: `${report.studyDays} 天`, icon: '📅' },
           {
-            label: '任务完成',
-            value: report.completionRate === null ? '--' : `${report.completionRate}%`,
+            label: '计划日完成率',
+            value: report.scheduleCompletionRate === null ? '--' : `${report.scheduleCompletionRate}%`,
             icon: '✅',
           },
           { label: '新接触', value: `${report.newWordCount} 词`, icon: '🌱' },
@@ -55,6 +55,11 @@ export default function ParentReportPage() {
         ))}
       </div>
 
+      <div className="mb-4 rounded-xl bg-indigo-50 p-4 text-xs leading-6 text-indigo-800">
+        截至今天，完成 {report.completedStudyDays}/{report.scheduledStudyDays} 个计划日；已生成任务完成 {report.completedTaskCount}/{report.plannedTaskCount} 项。
+        {report.scheduleKnownFrom && <p>计划从 {report.scheduleKnownFrom} 起记录；未打开应用的计划日也会计入，未来日期不提前计算。</p>}
+        <p>额外学习会记录练习表现，不增加计划完成率。</p>
+      </div>
       <section className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -64,29 +69,30 @@ export default function ParentReportPage() {
             </p>
           </div>
           <div className="rounded-xl bg-emerald-50 px-3 py-2 text-lg font-bold text-emerald-700">
-            {report.grade1MasteryRate}%
+            {report.currentGradeMasteryRate}%
           </div>
         </div>
 
         <div className="mt-4">
           <div className="flex justify-between text-xs text-gray-500">
-            <span>一年级基本/熟练掌握</span>
-            <span>{report.grade1MasteredCount}/{report.grade1TotalCount}</span>
+            <span>{report.currentGradeName}基本/熟练掌握</span>
+            <span>{report.currentGradeMasteredCount}/{report.currentGradeTotal}</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
             <div
               className="h-full rounded-full bg-emerald-400"
-              style={{ width: `${report.grade1MasteryRate}%` }}
+              style={{ width: `${report.currentGradeMasteryRate}%` }}
             />
           </div>
         </div>
 
-        <div className="mt-4 rounded-xl bg-indigo-50 px-4 py-3">
-          <div className="text-sm font-bold text-indigo-800">二年级预习</div>
-          <div className="mt-1 text-xs text-indigo-600">
-            前四单元已接触 {report.grade2PreviewCount}/{report.grade2PreviewTotal} 词
-          </div>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {report.englishSkills.map(item => <div key={item.skill} className="rounded-xl bg-indigo-50 p-3">
+            <div className="text-xs font-bold text-indigo-800">{item.label}</div>
+            <div className="mt-1 text-sm text-indigo-700">{item.total === 0 ? '暂无记录' : item.skill === 'speaking' ? `确认 ${item.correct} 次` : `答对 ${item.correct}/${item.total} 题`}</div>
+          </div>)}
         </div>
+        <p className="mt-3 text-xs leading-5 text-gray-500">技能记录只来自实际练习。听力改为文字题会计入认读；历史词汇成绩不会推定为表达能力。</p>
       </section>
 
       <section className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
@@ -115,8 +121,15 @@ export default function ParentReportPage() {
         )}
       </section>
 
+      {report.mathSkills.length > 0 && <section className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
+        <h3 className="font-bold text-gray-800">数学知识点记录</h3>
+        <div className="mt-3 space-y-3">{report.mathSkills.map(item => <div key={item.skillId} className="rounded-xl bg-amber-50 p-3">
+          <div className="flex justify-between gap-3 text-sm"><span className="font-semibold text-gray-700">{item.title}</span><span>{item.correct}/{item.total}</span></div>
+          <p className="mt-1 text-xs text-gray-500">{item.total < 5 ? '记录较少，继续观察' : `本周正确率 ${item.accuracy}% · 包含复习`}</p>
+        </div>)}</div>
+      </section>}
       <section className="mb-4 rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="font-bold text-gray-800">当前最需要关注</h3>
+        <h3 className="font-bold text-gray-800">当前英语关注点</h3>
         {report.concerns.length === 0 ? (
           <div className="mt-3 rounded-xl bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
             当前没有突出的薄弱单元，按到期任务继续复习即可。

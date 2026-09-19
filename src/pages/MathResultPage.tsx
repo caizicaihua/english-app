@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { loadMathProgress } from '../utils/storage'
 import { formatCountdown } from '../utils/mathPaper'
+import { getMathSkill } from '../data/mathSkills'
 
 export default function MathResultPage() {
   const navigate = useNavigate()
@@ -23,16 +24,22 @@ export default function MathResultPage() {
   }
 
   const wrongQuestions = attempt.questions.filter(item => !item.isCorrect)
-  const accuracy = Math.round((attempt.correctCount / attempt.totalCount) * 100)
+  const accuracy = attempt.totalCount > 0 ? Math.round((attempt.correctCount / attempt.totalCount) * 100) : 0
   const retryMode = attempt.mode === 'quick' ? 'quick' : 'paper'
   const retryLabel = attempt.mode === 'quick'
     ? '再做 20 题'
+    : attempt.mode === 'focused'
+      ? '再练同一知识点'
     : attempt.mode === 'review'
       ? '继续错题练习'
       : '再来一套'
   const handleRetry = () => {
     if (attempt.mode === 'review') {
       navigate('/math/wrong-book')
+      return
+    }
+    if (attempt.mode === 'focused') {
+      navigate(`/math/practice?mode=focused&skill=${getMathSkill(attempt.skillId).id}&count=${attempt.totalCount}`)
       return
     }
     navigate('/math/practice', {
@@ -96,15 +103,18 @@ export default function MathResultPage() {
             {wrongQuestions.map((item, index) => (
               <div key={`${item.question.reviewKey}-${index}`} className="rounded-xl bg-gray-50 px-4 py-3">
                 <div className="text-sm font-bold text-gray-800">{item.question.prompt}</div>
+                {item.question.skillId && <div className="mt-1 text-xs font-semibold text-indigo-500">{getMathSkill(item.question.skillId).title}</div>}
                 <div className="text-xs text-gray-500 mt-1">
                   你的答案：{item.userAnswer || '未作答'} | 正确答案：{item.question.correctAnswer}
                 </div>
+                {item.question.explanation && <p className="mt-2 text-sm leading-6 text-gray-600">想一想：{item.question.explanation}</p>}
               </div>
             ))}
           </div>
         )}
       </div>
 
+      <p className="mb-4 text-xs leading-5 text-gray-500">一次练习只说明今天的表现。可以先看懂解题方法，再换数字试一试。</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <button
           onClick={handleRetry}

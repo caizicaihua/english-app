@@ -1,5 +1,10 @@
+import { useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import StorageNotice from './StorageNotice'
+import { useLocalDateKey } from '../hooks/useLocalDateKey'
+import { ensurePlanHistory } from '../utils/planHistory'
+import { loadProgress, loadSettings, saveProgress } from '../utils/storage'
 
 const navItems = [
   { path: '/', label: '首页', icon: '🏠' },
@@ -11,6 +16,13 @@ const navItems = [
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const today = useLocalDateKey()
+  const refreshesDaily = ['/', '/bridge', '/bridge/today', '/bridge/report', '/stats'].includes(location.pathname)
+  useEffect(() => {
+    const current = loadProgress()
+    const updated = ensurePlanHistory(current, loadSettings().bridgePlan)
+    if (current !== updated) saveProgress(updated)
+  }, [location.pathname, today])
 
   return (
     <div className="min-h-screen flex flex-col pb-20">
@@ -23,6 +35,7 @@ export default function Layout() {
             🎒 小学学习
           </h1>
           <button
+            aria-label="设置与备份"
             onClick={() => navigate('/settings')}
             className="text-xl active:scale-90 transition-transform"
           >
@@ -32,8 +45,9 @@ export default function Layout() {
       </header>
 
       <main className="flex-1 max-w-lg mx-auto w-full px-4 py-4">
+        <StorageNotice />
         <motion.div
-          key={location.pathname}
+          key={`${location.pathname}:${refreshesDaily ? today : ''}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.12, ease: 'easeOut' }}

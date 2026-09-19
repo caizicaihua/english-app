@@ -1,203 +1,34 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import {
-  loadProgress,
-  loadSettings,
-  saveProgress,
-} from '../utils/storage'
-import {
-  getDiagnosticOverallScore,
-  isCurrentDiagnosticSectionComplete,
-} from '../utils/diagnostic'
-import {
-  getBridgePlanDateRange,
-  getDailyTaskIds,
-  getOrCreateDailyStudyPlan,
-} from '../utils/studyPlan'
+import { gradeCatalog } from '../data/words'
+import { getMathSkill } from '../data/mathSkills'
+import { loadProgress, loadSettings } from '../utils/storage'
 
 export default function BridgeHomePage() {
   const navigate = useNavigate()
-  const settings = loadSettings()
-  const [progress, setProgress] = useState(loadProgress)
-  const planSettings = settings.bridgePlan
-
-  if (!planSettings.enabled) {
-    return (
-      <div className="py-8 text-center">
-        <div className="text-6xl">🌻</div>
-        <h2 className="mt-4 text-2xl font-bold text-gray-800">一升二暑假衔接</h2>
-        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-500">
-          每天 10–20 分钟，先巩固一年级，再轻量预习二年级。
-        </p>
-        <button
-          type="button"
-          onClick={() => navigate('/bridge/setup')}
-          className="mt-6 rounded-2xl bg-primary px-8 py-3.5 font-bold text-white shadow-md active:scale-95"
-        >
-          开始设置计划
-        </button>
-      </div>
-    )
-  }
-
-  const dailyPlan = getOrCreateDailyStudyPlan(progress, planSettings)
-  const taskIds = getDailyTaskIds(dailyPlan)
-  const completedCount = dailyPlan.completedTaskIds.length
-  const dateRange = getBridgePlanDateRange(planSettings)
-  const latestDiagnosticResult = progress.diagnosticResults.at(-1)
-  const diagnosticScore = latestDiagnosticResult
-    ? getDiagnosticOverallScore(latestDiagnosticResult)
-    : null
-
-  const handleSkipDiagnostic = () => {
-    const next = {
-      ...progress,
-      diagnosticSkippedAt: new Date().toISOString(),
-    }
-    saveProgress(next)
-    setProgress(next)
-  }
+  const settings = loadSettings().bridgePlan
+  const progress = loadProgress()
+  const grade = gradeCatalog.find(item => item.id === (settings.gradeId ?? 2))!
+  const unit = grade.units.find(item => item.id === (settings.englishUnitId ?? 1)) ?? grade.units[0]
 
   return (
-    <div>
-      <div className="mb-6 text-center">
-        <div className="mb-2 text-5xl">🌻</div>
-        <h2 className="text-2xl font-bold text-gray-800">一升二暑假计划</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          {dateRange.startDate} 至 {dateRange.endDate}
-        </p>
+    <div className="space-y-4">
+      <div className="mb-6"><p className="text-sm font-semibold text-primary">一起陪孩子长大</p><h2 className="mt-1 text-2xl font-bold text-gray-800">家长空间</h2></div>
+      <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <h3 className="font-bold text-gray-800">{grade.name} · {settings.semester === 'lower' ? '下' : '上'}学期计划</h3>
+        <p className="mt-2 text-sm leading-7 text-gray-600">英语：{unit.nameZh}<br />数学：{getMathSkill(settings.mathSkillId ?? 'addition-carry')?.title ?? '加减巩固'}<br />每周 {settings.studyDaysPerWeek} 天 · 每天两科合计约 {settings.dailyMinutes} 分钟</p>
+        <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">当前使用通用主题与能力练习。请按学校实际进度选择单元；未绑定教材章节。</p>
+        <button onClick={() => navigate('/bridge/setup')} className="mt-4 w-full rounded-xl bg-primary py-3 font-bold text-white">{settings.enabled ? '调整课程与节奏' : '开启学习计划'}</button>
+      </section>
+      <button onClick={() => navigate('/bridge/report')} className="w-full rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-5 text-left"><span className="text-2xl">📋</span><span className="mt-2 block font-bold text-indigo-900">本周双科学习报告</span><span className="mt-1 block text-sm text-indigo-700">看学习证据、薄弱项和下一步建议</span></button>
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => navigate('/bridge/today')} className="rounded-2xl bg-white p-4 text-left shadow-sm">🚀 <span className="mt-2 block font-bold text-gray-700">今日任务</span></button>
+        <button onClick={() => navigate('/settings')} className="rounded-2xl bg-white p-4 text-left shadow-sm">💾 <span className="mt-2 block font-bold text-gray-700">设置与备份</span></button>
       </div>
-
-      <div className="mb-4 rounded-2xl bg-white p-4 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="text-2xl">🩺</div>
-            <div className="mt-2 font-bold text-gray-800">一年级英语小体检</div>
-            <div className="mt-1 text-sm text-gray-500">
-              {progress.diagnosticDraft
-                ? isCurrentDiagnosticSectionComplete(progress.diagnosticDraft)
-                  ? `第 ${progress.diagnosticDraft.currentSection + 1}/5 小节已完成`
-                  : `已保存到第 ${progress.diagnosticDraft.currentSection + 1}/5 小节`
-                : diagnosticScore !== null
-                  ? `最近一次整体掌握率 ${diagnosticScore}%`
-                  : progress.diagnosticSkippedAt
-                    ? '已暂时跳过，可以随时补做'
-                    : '每次 4–9 题，可以分几天完成'}
-            </div>
-          </div>
-          {diagnosticScore !== null && (
-            <div className="rounded-xl bg-indigo-50 px-3 py-2 text-xl font-bold text-primary">
-              {diagnosticScore}%
-            </div>
-          )}
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => navigate(
-              latestDiagnosticResult && !progress.diagnosticDraft
-                ? '/bridge/diagnostic/result'
-                : '/bridge/diagnostic',
-            )}
-            className="rounded-xl bg-primary py-2.5 text-sm font-bold text-white"
-          >
-            {progress.diagnosticDraft
-              ? '继续诊断'
-              : latestDiagnosticResult
-                ? '查看结果'
-                : '开始诊断'}
-          </button>
-          {!latestDiagnosticResult && !progress.diagnosticDraft ? (
-            <button
-              type="button"
-              onClick={handleSkipDiagnostic}
-              className="rounded-xl bg-gray-100 py-2.5 text-sm font-bold text-gray-500"
-            >
-              暂时跳过
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => navigate('/bridge/diagnostic')}
-              className="rounded-xl bg-gray-100 py-2.5 text-sm font-bold text-gray-500"
-            >
-              {latestDiagnosticResult ? '重新诊断' : '打开诊断'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <motion.button
-        type="button"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        onClick={() => navigate('/bridge/today')}
-        className="w-full rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 p-5 text-left text-white shadow-lg active:scale-[0.98]"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-sm font-semibold text-indigo-100">今日学习</div>
-            <div className="mt-1 text-2xl font-bold">
-              {taskIds.length > 0
-                ? `${completedCount}/${taskIds.length} 项完成`
-                : '今天是休息日'}
-            </div>
-            <div className="mt-2 text-sm text-indigo-100">
-              {taskIds.length > 0
-                ? `预计 ${planSettings.dailyMinutes} 分钟 · 轻松完成不补课`
-                : '不用补做，保持轻松节奏'}
-            </div>
-          </div>
-          <div className="text-4xl">🚀</div>
-        </div>
-      </motion.button>
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => navigate('/bridge/setup')}
-          className="rounded-2xl bg-white p-4 text-left shadow-sm active:scale-95"
-        >
-          <div className="text-2xl">⚙️</div>
-          <div className="mt-2 font-bold text-gray-700">调整计划</div>
-          <div className="mt-1 text-xs text-gray-400">
-            每周 {planSettings.studyDaysPerWeek} 天
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => navigate('/math')}
-          className="rounded-2xl bg-white p-4 text-left shadow-sm active:scale-95"
-        >
-          <div className="text-2xl">🧮</div>
-          <div className="mt-2 font-bold text-gray-700">数学练习</div>
-          <div className="mt-1 text-xs text-gray-400">20 题快速练或 100 题整卷</div>
-        </button>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => navigate('/bridge/report')}
-        className="mt-3 w-full rounded-2xl bg-white p-4 text-left shadow-sm active:scale-[0.98]"
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="font-bold text-gray-700">📋 家长周报</div>
-            <div className="mt-1 text-xs text-gray-400">
-              查看本周学习天数、掌握进展和下周建议
-            </div>
-          </div>
-          <div className="text-xl text-gray-300">›</div>
-        </div>
-      </button>
-
-      <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-        <div className="font-bold text-amber-800">学习节奏</div>
-        <div className="mt-2 text-sm leading-6 text-amber-700">
-          先完成到期复习，再学少量新词。复习达到 8 个时，今天自动暂停新增内容。
-        </div>
-      </div>
+      <section className="rounded-2xl border border-gray-200 p-4">
+        <h3 className="text-sm font-bold text-gray-700">可选：一年级英语基础自测</h3>
+        <p className="mt-2 text-xs leading-5 text-gray-500">每次 4–9 题，可分几次完成。不影响直接开始二年级学习。</p>
+        <button onClick={() => navigate(progress.diagnosticResults.length && !progress.diagnosticDraft ? '/bridge/diagnostic/result' : '/bridge/diagnostic')} className="mt-3 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-primary">{progress.diagnosticDraft ? '继续基础自测' : progress.diagnosticResults.length ? '查看自测结果' : '开始基础自测'}</button>
+      </section>
     </div>
   )
 }

@@ -1,122 +1,57 @@
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { gradeCatalog, getTotalWords } from '../data/words'
-import { mathPaperConfig, mathQuickConfig } from '../data/math'
-import {
-  getActiveStreak,
-  getMathModeProgress,
-  loadMathProgress,
-  loadProgress,
-  loadSettings,
-} from '../utils/storage'
-import { buildDailyStudyPlan, getDailyTaskIds } from '../utils/studyPlan'
+import { getMathSkill } from '../data/mathSkills'
+import { getActiveStreak, loadProgress, loadSettings } from '../utils/storage'
+import { getDailyTaskIds, getOrCreateDailyStudyPlan, getPlanStatusMessage } from '../utils/studyPlan'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const progress = loadProgress()
-  const mathProgress = loadMathProgress()
-  const mathPaperProgress = getMathModeProgress(mathProgress, 'paper')
-  const mathQuickProgress = getMathModeProgress(mathProgress, 'quick')
-  const bridgeSettings = loadSettings().bridgePlan
-  const bridgeDailyPlan = buildDailyStudyPlan(progress, bridgeSettings)
-  const bridgeTaskCount = getDailyTaskIds(bridgeDailyPlan).length
-  const activeStreak = getActiveStreak(progress)
+  const settings = loadSettings().bridgePlan
+  const plan = getOrCreateDailyStudyPlan(progress, settings)
+  const tasks = getDailyTaskIds(plan)
+  const completed = tasks.filter(id => plan.completedTaskIds.includes(id)).length
+  const grade = gradeCatalog.find(item => item.id === (settings.gradeId ?? 2))!
+  const unit = grade.units.find(item => item.id === (settings.englishUnitId ?? 1)) ?? grade.units[0]
+  const emptyState = getPlanStatusMessage(plan.status)
+
+
 
   return (
-    <div>
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">选择学习内容</h2>
-        <p className="text-gray-500 text-sm mt-1">
-          已学 {progress.learnedWords.length} 个单词 | 连续 {activeStreak} 天
-        </p>
+    <div className="space-y-5">
+      <div>
+        <p className="text-sm font-semibold text-primary">{grade.name} · {settings.semester === 'lower' ? '下学期' : '上学期'}</p>
+        <h2 className="mt-1 text-3xl font-bold text-gray-800">今天学一点 🌱</h2>
+        <p className="mt-2 text-sm text-gray-500">英语和数学，一起慢慢进步</p>
       </div>
-
-      <motion.button
-        type="button"
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        onClick={() => navigate(bridgeSettings.enabled ? '/bridge' : '/bridge/setup')}
-        className="mb-4 w-full cursor-pointer rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100 p-5 text-left shadow-md transition-shadow hover:shadow-lg active:scale-95"
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="mb-2 text-4xl">🌻</div>
-            <div className="text-lg font-bold text-amber-800">一升二暑假衔接</div>
-            <div className="mt-1 text-xs text-amber-700">
-              {bridgeSettings.enabled
-                ? bridgeTaskCount > 0
-                  ? `今日 ${bridgeTaskCount} 项 · 约 ${bridgeSettings.dailyMinutes} 分钟`
-                  : '今天是休息日，不用补做'
-                : '每天 15 分钟，巩固一年级并轻量预习'}
-            </div>
-          </div>
-          <div className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-bold text-amber-700">
-            {bridgeSettings.enabled ? '进入计划' : '开始设置'}
-          </div>
-        </div>
-      </motion.button>
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        onClick={() => navigate('/math')}
-        className="bg-white rounded-2xl p-5 shadow-md cursor-pointer hover:shadow-lg transition-shadow active:scale-95 mb-4"
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-4xl mb-2">🧮</div>
-            <div className="font-bold text-lg text-primary">一年级数学练习</div>
-            <div className="text-xs text-gray-400 mt-1">每日 20 题 · 约 5 分钟</div>
-          </div>
-          <div className="text-right text-xs text-gray-500">
-            <div>
-              快速练最高 {mathQuickProgress.completedCount > 0
-                ? `${mathQuickProgress.bestScore}/${mathQuickConfig.totalQuestions}`
-                : '--'}
-            </div>
-            <div className="mt-1">
-              整卷最高 {mathPaperProgress.bestScore}/{mathPaperConfig.totalQuestions}
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      <div className="text-sm font-bold text-gray-700 mb-3">英语年级</div>
-      <div className="grid grid-cols-2 gap-4">
-        {gradeCatalog.map((grade, index) => {
-          const totalWords = getTotalWords(grade)
-          const learnedInGrade = grade.units
-            .flatMap(unit => unit.wordIds)
-            .filter(id => progress.learnedWords.includes(id)).length
-          const percent = totalWords > 0 ? Math.round((learnedInGrade / totalWords) * 100) : 0
-
-          return (
-            <motion.div
-              key={grade.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.08 }}
-              onClick={() => navigate(`/grade/${grade.id}`)}
-              className="bg-white rounded-2xl p-5 shadow-md cursor-pointer hover:shadow-lg transition-shadow active:scale-95"
-            >
-              <div className="text-4xl mb-2">{grade.emoji}</div>
-              <div className="font-bold text-lg" style={{ color: grade.color }}>
-                {grade.name}
-              </div>
-              <div className="text-xs text-gray-400 mt-1">
-                {grade.units.length} 个单元 · {totalWords} 词
-              </div>
-              <div className="mt-3 bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{ width: `${percent}%`, backgroundColor: grade.color }}
-                />
-              </div>
-              <div className="text-xs text-gray-400 mt-1">{percent}%</div>
-            </motion.div>
-          )
-        })}
+      <section className="rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-500 p-6 text-white shadow-lg">
+        <p className="text-sm text-indigo-100">{settings.enabled ? `每日约 ${settings.dailyMinutes} 分钟 · 两科合计` : '从学校正在学的内容开始'}</p>
+        <h3 className="mt-3 text-2xl font-bold">{!settings.enabled ? '设置我的学习计划' : tasks.length ? completed === tasks.length ? '今天完成啦！' : `今天有 ${tasks.length} 项小任务` : emptyState.title}</h3>
+        <p className="mt-2 text-sm leading-6 text-indigo-100">{tasks.length ? `已完成 ${completed}/${tasks.length} 项，先复习，再学新内容。` : emptyState.description}</p>
+        <button onClick={() => navigate(!settings.enabled ? '/bridge/setup' : '/bridge/today')} className="mt-5 w-full rounded-2xl bg-white py-3.5 font-bold text-indigo-700 active:scale-[0.98]">
+          {!settings.enabled ? '开始设置' : tasks.length && completed < tasks.length ? '开始今天的学习' : '看看今日安排'}
+        </button>
+      </section>
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => navigate(`/grade/${grade.id}`)} className="rounded-2xl bg-white p-4 text-left shadow-sm">
+          <div className="text-3xl">📖</div><h3 className="mt-2 font-bold text-gray-800">英语探索</h3><p className="mt-1 text-xs leading-5 text-gray-500">当前主题：{unit.nameZh}</p>
+        </button>
+        <button onClick={() => navigate('/math')} className="rounded-2xl bg-white p-4 text-left shadow-sm">
+          <div className="text-3xl">🧮</div><h3 className="mt-2 font-bold text-gray-800">数学练习</h3><p className="mt-1 text-xs leading-5 text-gray-500">{getMathSkill(settings.mathSkillId ?? 'addition-carry')?.title ?? '按知识点练习'}</p>
+        </button>
       </div>
+      <div className="flex items-center justify-between rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800">
+        <span>已接触 {progress.learnedWords.length} 个词</span><span>学习连续 {getActiveStreak(progress)} 天</span>
+      </div>
+      <button onClick={() => navigate('/bridge')} className="flex w-full items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm">
+        <span><span className="font-bold text-gray-800">家长空间</span><span className="mt-1 block text-xs text-gray-500">课程安排、双科周报与学习设置</span></span><span aria-hidden="true">›</span>
+      </button>
+      <details className="rounded-2xl bg-white p-4 shadow-sm">
+        <summary className="cursor-pointer text-sm font-bold text-gray-600">探索其他英语年级</summary>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {gradeCatalog.map(item => <button key={item.id} onClick={() => navigate(`/grade/${item.id}`)} className="rounded-xl bg-gray-50 p-3 text-left"><div className="font-bold" style={{ color: item.color }}>{item.emoji} {item.name}</div><div className="mt-1 text-xs text-gray-500">{item.units.length} 单元 · {getTotalWords(item)} 词</div></button>)}
+        </div>
+      </details>
     </div>
   )
 }

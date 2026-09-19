@@ -38,6 +38,7 @@ function createSettings(overrides: Partial<BridgePlanSettings> = {}): BridgePlan
   return {
     ...defaultBridgePlanSettings,
     enabled: true,
+    mode: 'bridge',
     startDate: '2026-07-24',
     ...overrides,
   }
@@ -152,7 +153,7 @@ describe('daily study plan', () => {
     const currentPlan = buildDailyStudyPlan(progress, settings, date)
     const legacyPlan = {
       ...currentPlan,
-      settingsSignature: currentPlan.settingsSignature.replace(/^plan-v2\|/, ''),
+      settingsSignature: currentPlan.settingsSignature.replace(/^plan-v3\|/, ''),
       includeMath: false,
       completedTaskIds: ['new_words' as const],
     }
@@ -162,7 +163,7 @@ describe('daily study plan', () => {
       date,
     )
 
-    expect(recalculated.settingsSignature).toMatch(/^plan-v2\|/)
+    expect(recalculated.settingsSignature).toMatch(/^plan-v3\|/)
     expect(recalculated.includeMath).toBe(true)
     expect(recalculated.completedTaskIds).toContain('new_words')
   })

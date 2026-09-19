@@ -93,22 +93,95 @@ export function getExampleSpeechRate(speed: SpeechSpeedPreset): number {
   return exampleSpeechRates[speed]
 }
 
-export function speak(text: string, rate = 0.8) {
-  if (!('speechSynthesis' in window)) return
-  window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(text)
-  utterance.lang = 'en-US'
-  utterance.rate = rate
-  utterance.pitch = 1.1
-  const { femaleVoice: enVoice } = getEnglishVoices()
-  if (enVoice) utterance.voice = enVoice
-  window.speechSynthesis.speak(utterance)
+export interface SpeechCallbacks {
+  onStart?: () => void
+  onEnd?: () => void
+  onUnavailable?: () => void
+}
+
+let activeSpeechCleanup: (() => void) | undefined
+
+export function isSpeechAvailable(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.speechSynthesis?.speak === 'function'
+    && typeof SpeechSynthesisUtterance !== 'undefined'
+}
+
+export function cancelSpeech(): void {
+  activeSpeechCleanup?.()
+  activeSpeechCleanup = undefined
+  if (isSpeechAvailable()) window.speechSynthesis.cancel()
+}
+
+/** Returns a cleanup function. A technical failure never becomes an answer. */
+export function speak(text: string, rate = 0.8, callbacks: SpeechCallbacks = {}): () => void {
+  cancelSpeech()
+  if (!isSpeechAvailable()) {
+    callbacks.onUnavailable?.()
+    return () => {}
+  }
+  let disposed = false
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  let utterance: SpeechSynthesisUtterance | undefined
+  const cleanup = () => {
+    disposed = true
+    clearTimeout(timeout)
+    if (utterance) {
+      utterance.onstart = null
+      utterance.onend = null
+      utterance.onerror = null
+    }
+  }
+  activeSpeechCleanup = cleanup
+  const fail = () => {
+    if (disposed) return
+    cleanup()
+    window.speechSynthesis.cancel()
+    callbacks.onUnavailable?.()
+  }
+  try {
+    utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'en-US'
+    utterance.rate = rate
+    utterance.pitch = 1.1
+    const { femaleVoice: enVoice } = getEnglishVoices()
+    if (enVoice) utterance.voice = enVoice
+    utterance.onstart = () => {
+      if (disposed) return
+      clearTimeout(timeout)
+      timeout = setTimeout(fail, Math.max(15000, text.length * 500))
+      callbacks.onStart?.()
+    }
+    utterance.onend = () => {
+      if (disposed) return
+      cleanup()
+      callbacks.onEnd?.()
+    }
+    utterance.onerror = fail
+    timeout = setTimeout(fail, 6000)
+    window.speechSynthesis.speak(utterance)
+  } catch {
+    fail()
+  }
+  return () => {
+    cleanup()
+    if (activeSpeechCleanup === cleanup) {
+      activeSpeechCleanup = undefined
+      window.speechSynthesis.cancel()
+    }
+  }
 }
 
 export function speakDialogue(lines: DialogueSpeechLine[], speed: SpeechSpeedPreset = 'normal') {
-  if (!('speechSynthesis' in window) || lines.length === 0) return
+  if (!isSpeechAvailable() || lines.length === 0) return
 
-  window.speechSynthesis.cancel()
+  cancelSpeech()
+  let disposed = false
+  let nextLineTimer: ReturnType<typeof setTimeout> | undefined
+  activeSpeechCleanup = () => {
+    disposed = true
+    clearTimeout(nextLineTimer)
+  }
 
   const { femaleVoice, maleVoice } = getEnglishVoices()
   const dialogueRates = dialogueSpeechRates[speed]
@@ -131,7 +204,7 @@ export function speakDialogue(lines: DialogueSpeechLine[], speed: SpeechSpeedPre
   })
 
   const speakNextLine = (index: number) => {
-    if (index >= lines.length) return
+    if (disposed || index >= lines.length) return
 
     const line = lines[index]
     const profile = speakerProfiles.get(line.speaker.trim()) ?? {
@@ -148,10 +221,14 @@ export function speakDialogue(lines: DialogueSpeechLine[], speed: SpeechSpeedPre
     if (profile.voice) utterance.voice = profile.voice
 
     utterance.onend = () => {
-      window.setTimeout(() => speakNextLine(index + 1), 350)
+      nextLineTimer = setTimeout(() => speakNextLine(index + 1), 350)
     }
 
-    window.speechSynthesis.speak(utterance)
+    try {
+      window.speechSynthesis.speak(utterance)
+    } catch {
+      cancelSpeech()
+    }
   }
 
   speakNextLine(0)

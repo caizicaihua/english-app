@@ -26,7 +26,7 @@ import {
   saveProgress,
   type ProgressData,
 } from '../utils/storage'
-import { speak } from '../utils/speech'
+import { speak, isSpeechAvailable } from '../utils/speech'
 
 interface DiagnosticPageState {
   grade: Grade
@@ -50,6 +50,7 @@ export default function DiagnosticPage() {
   const [pageState, setPageState] = useState<DiagnosticPageState | null>(null)
   const [feedback, setFeedback] = useState<AnswerFeedback | null>(null)
   const [spellAnswer, setSpellAnswer] = useState('')
+  const [audioState, setAudioState] = useState<{ questionId: string; ready: boolean; failed: boolean } | null>(null)
   const feedbackTimer = useRef<number | null>(null)
 
   useEffect(() => {
@@ -88,7 +89,12 @@ export default function DiagnosticPage() {
   const choices = question ? getDiagnosticChoiceWords(question, allWords) : []
 
   useEffect(() => {
-    if (question?.questionType === 'listen' && word) speak(word.en)
+    if (question?.questionType === 'listen' && word) {
+      return speak(word.en, 0.8, {
+        onEnd: () => setAudioState({ questionId: question.id, ready: true, failed: false }),
+        onUnavailable: () => setAudioState({ questionId: question.id, ready: false, failed: true }),
+      })
+    }
   }, [question?.id, question?.questionType, word])
 
   if (!pageState || !draft) {
@@ -98,12 +104,19 @@ export default function DiagnosticPage() {
   const progressInfo = getDiagnosticProgress(draft)
   const sectionComplete = isCurrentDiagnosticSectionComplete(draft)
   const diagnosticComplete = isDiagnosticComplete(draft)
+  const canAnswer = question?.questionType !== 'listen' || (audioState?.questionId === question.id && audioState.ready)
+  const switchToReading = () => {
+    if (!question) return
+    const nextProgress = { ...pageState.progress, diagnosticDraft: { ...draft, sections: draft.sections.map(section => ({ ...section, questions: section.questions.map(item => item.id === question.id ? { ...item, questionType: 'zh2en' as const } : item) })) } }
+    saveProgress(nextProgress)
+    setPageState({ ...pageState, progress: nextProgress })
+  }
 
   const commitAnswer = (
     isCorrect: boolean,
     selectedWordId?: string,
   ) => {
-    if (feedback || !question) return
+    if (feedback || !question || !canAnswer) return
     const gradeSummary = getGradeSummary(1)
     if (!gradeSummary) return
 
@@ -253,12 +266,14 @@ export default function DiagnosticPage() {
             <h2 className="mt-3 text-xl font-bold text-gray-800">听一听，选出单词</h2>
             <button
               type="button"
-              onClick={() => speak(word.en)}
+              onClick={() => speak(word.en, 0.8, { onEnd: () => setAudioState({ questionId: question.id, ready: true, failed: false }), onUnavailable: () => setAudioState({ questionId: question.id, ready: false, failed: true }) })}
               className="mt-4 h-14 w-14 rounded-full bg-indigo-50 text-2xl active:scale-90"
               aria-label="重播发音"
             >
               🔊
             </button>
+            <p className="mt-3 text-xs text-gray-500">{!isSpeechAvailable() || (audioState?.questionId === question.id && audioState.failed) ? '暂时无法播放，不会因此计错。' : canAnswer ? '听完啦，可以作答。' : '请先听完发音；如果没有声音，可以改为认读题。'}</p>
+            <button onClick={switchToReading} className="mt-2 rounded-xl bg-gray-100 px-4 py-2 text-sm text-gray-700">没有声音，改为认读题</button>
           </div>
         ) : (
           <div className="text-center">
@@ -323,7 +338,7 @@ export default function DiagnosticPage() {
                   key={choice.id}
                   type="button"
                   onClick={() => commitAnswer(choice.id === word.id, choice.id)}
-                  disabled={!!feedback}
+                  disabled={!!feedback || !canAnswer}
                   className={`w-full rounded-2xl border-2 px-4 py-3 text-lg font-bold active:scale-[0.98] ${style}`}
                 >
                   {choice.en}

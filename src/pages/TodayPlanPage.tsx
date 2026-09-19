@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DailyTaskCard from '../components/DailyTaskCard'
+import { getEnglishActivity } from '../data/englishActivities'
+import { getMathSkill } from '../data/mathSkills'
 import type { DailyStudyPlan, DailyTaskId } from '../data/bridgePlan'
 import {
   completeDailyTask,
   getDailyTaskIds,
+  getPlanStatusMessage,
   getOrCreateDailyStudyPlan,
   saveDailyStudyPlan,
+  startDailyTask,
 } from '../utils/studyPlan'
 import {
   loadProgress,
@@ -40,7 +44,9 @@ export default function TodayPlanPage() {
   const [context, setContext] = useState<TodayContext>(loadTodayContext)
   const { progress, plan } = context
   const taskIds = getDailyTaskIds(plan)
-  const completed = new Set(plan.completedTaskIds)
+  const completed = new Set(plan.completedTaskIds.filter(id => taskIds.includes(id)))
+  const emptyState = getPlanStatusMessage(plan.status)
+  const activity = plan.englishActivityId ? getEnglishActivity(plan.englishActivityId) : undefined
 
   const handleComplete = (taskId: DailyTaskId) => {
     const nextProgress = completeDailyTask(progress, plan.date, taskId)
@@ -113,13 +119,22 @@ export default function TodayPlanPage() {
       onOpen: () => navigate('/bridge/daily-quiz'),
       canMarkComplete: false,
     }] : []),
+    ...(activity ? [{
+      id: 'english_activity' as const,
+      icon: '💬',
+      title: activity.title,
+      description: '听懂短句，选一选，再试着说一句。口头练习可跳过。',
+      countLabel: '约 3 分钟',
+      onOpen: () => navigate(`/english/activity/${activity.id}`),
+      canMarkComplete: false,
+    }] : []),
     ...(plan.includeMath ? [{
       id: 'math' as const,
       icon: '🧮',
-      title: '数学口算',
-      description: '用 20 道短练习保持百以内计算手感，做完自动记录。',
-      countLabel: '20 题 · 5 分钟',
-      onOpen: () => navigate('/math/practice?mode=quick'),
+      title: plan.mathSkillId ? getMathSkill(plan.mathSkillId)?.title ?? '数学专项' : '数学口算',
+      description: plan.mathSkillId ? '不计时，理解后再作答。完成后自动记录。' : '完成 20 道短练习，保持计算手感。',
+      countLabel: plan.mathSkillId ? `${plan.mathQuestionCount ?? 8} 题 · 不限时` : '20 题 · 5 分钟',
+      onOpen: () => navigate(plan.mathSkillId ? `/math/practice?mode=focused&skill=${plan.mathSkillId}&count=${plan.mathQuestionCount ?? 8}` : '/math/practice?mode=quick'),
       canMarkComplete: false,
     }] : []),
   ]
@@ -131,7 +146,7 @@ export default function TodayPlanPage() {
           <div className="text-sm font-semibold text-primary">{plan.date}</div>
           <h2 className="mt-1 text-2xl font-bold text-gray-800">今日学习任务</h2>
           <p className="mt-1 text-sm text-gray-500">
-            已完成 {completed.size}/{taskIds.length} 项
+            {taskIds.length > 0 ? `已完成 ${completed.size}/${taskIds.length} 项` : '今天没有需要完成的任务'}
           </p>
         </div>
         <div className="text-5xl">🚀</div>
@@ -158,7 +173,12 @@ export default function TodayPlanPage() {
             countLabel={task.countLabel}
             completed={completed.has(task.id)}
             canMarkComplete={task.canMarkComplete}
-            onOpen={task.onOpen}
+            onOpen={() => {
+              const current = loadProgress()
+              const started = startDailyTask(current, plan.date, task.id)
+              if (started !== current) saveProgress(started)
+              return task.onOpen()
+            }}
             onComplete={() => handleComplete(task.id)}
           />
         ))}
@@ -167,8 +187,9 @@ export default function TodayPlanPage() {
       {taskIds.length === 0 && (
         <div className="rounded-2xl bg-white px-5 py-10 text-center shadow-sm">
           <div className="text-5xl">🌤️</div>
-          <div className="mt-3 text-lg font-bold text-gray-700">今天是休息日</div>
-          <div className="mt-2 text-sm text-gray-500">不用补做，出去玩一会儿吧。</div>
+          <div className="mt-3 text-lg font-bold text-gray-700">{emptyState.title}</div>
+          <div className="mt-2 text-sm text-gray-500">{emptyState.description}</div>
+          <button onClick={() => navigate(plan.status === 'rest' ? '/' : '/bridge/setup')} className="mt-4 rounded-xl bg-primary px-5 py-3 font-bold text-white">{plan.status === 'rest' ? '自由探索' : '调整计划'}</button>
         </div>
       )}
 

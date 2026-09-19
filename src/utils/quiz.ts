@@ -15,6 +15,7 @@ export interface Question {
   matchWords?: Word[]
   displayLetters?: string[]
   hiddenIndices?: number[]
+  keyboardLetters?: string[]
   sentencePrompt?: {
     en: string
     zh: string
@@ -87,7 +88,7 @@ function buildDialoguePrompts(unit: Unit): Array<{ word: Word; prompt: DialogueP
   return prompts
 }
 
-function createSpellingQuestion(word: Word): Question {
+export function createSpellingQuestion(word: Word): Question {
   const letters = word.en.split('')
   const letterIndices = letters
     .map((letter, letterIndex) => ({ letter, index: letterIndex }))
@@ -102,7 +103,18 @@ function createSpellingQuestion(word: Word): Question {
     correctAnswer: word.en,
     displayLetters: letters.map((letter, index) => indices.includes(index) ? '_' : letter),
     hiddenIndices: indices,
+    keyboardLetters: createSpellingKeyboard(letters, indices),
   }
+}
+
+export function createSpellingKeyboard(letters: string[], hiddenIndices: number[]): string[] {
+  const missingLetters = hiddenIndices.map(index => letters[index])
+  const extraLetters = 'abcdefghijklmnopqrstuvwxyz'.split('')
+    .filter(letter => !missingLetters.includes(letter))
+  return shuffle([
+    ...new Set(missingLetters),
+    ...shuffle(extraLetters).slice(0, Math.max(5, 8 - new Set(missingLetters).size)),
+  ])
 }
 
 export function generateWordCheckQuestions(
